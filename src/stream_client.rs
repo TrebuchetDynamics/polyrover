@@ -8,6 +8,7 @@ use std::{
 use tungstenite::{connect, stream::MaybeTlsStream, Message, WebSocket};
 
 use crate::{
+    market_data::{TrackedEvent, Tracker},
     stream::{
         market_subscription, parse_market_event, split_array, Config, Deduplicator, MarketEvent,
         RawMessage, StreamStats,
@@ -23,11 +24,20 @@ pub struct MarketRead {
     pub reconnected: bool,
 }
 
+#[derive(Clone, Debug)]
+pub struct TrackedMarketRead {
+    pub events: Vec<TrackedEvent>,
+    pub received_valid_frame: bool,
+    pub invalid_frame: bool,
+    pub reconnected: bool,
+}
+
 pub struct MarketWsClient {
     socket: WebSocket<MaybeTlsStream<TcpStream>>,
     config: Config,
     stats: StreamStats,
     dedup: Deduplicator,
+    tracker: Tracker,
     subscriptions: Vec<String>,
     last_ping: Instant,
 }
@@ -43,6 +53,7 @@ impl MarketWsClient {
             config,
             stats,
             dedup: Deduplicator::new(4096, 120_000),
+            tracker: Tracker::new(),
             subscriptions: Vec::new(),
             last_ping: Instant::now(),
         })
@@ -60,7 +71,12 @@ impl MarketWsClient {
                 thread::sleep(*delay);
             }
         }
-        Err(last_err.unwrap_or_else(|| Error::Invalid("websocket connect failed".into())))
+        Err(Error::ReconnectExhausted {
+            attempts: delays.len() as u32 + 1,
+            last_error: last_err
+                .map(|err| err.to_string())
+                .unwrap_or_else(|| "websocket connect failed".into()),
+        })
     }
 
     pub fn subscribe_assets(&mut self, asset_ids: &[String]) -> Result<()> {
@@ -172,6 +188,28 @@ impl MarketWsClient {
             .collect()
     }
 
+    pub fn read_tracked_with_status(&mut self, observed_at_ms: i64) -> Result<TrackedMarketRead> {
+        let read = self.read_raw_with_status(observed_at_ms)?;
+        let events = read
+            .messages
+            .into_iter()
+            .map(|raw| parse_market_event(&raw.payload.to_string()))
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .map(|event| self.tracker.apply_event(event))
+            .collect();
+        Ok(TrackedMarketRead {
+            events,
+            received_valid_frame: read.received_valid_frame,
+            invalid_frame: read.invalid_frame,
+            reconnected: read.reconnected,
+        })
+    }
+
+    pub fn read_tracked(&mut self, observed_at_ms: i64) -> Result<Vec<TrackedEvent>> {
+        Ok(self.read_tracked_with_status(observed_at_ms)?.events)
+    }
+
     pub fn ping(&mut self) -> Result<()> {
         self.socket
             .send(Message::Text("PING".into()))
@@ -231,7 +269,7 @@ fn set_read_timeout(
 }
 
 fn ws_err(err: tungstenite::Error) -> Error {
-    Error::Invalid(format!("websocket: {err}"))
+    Error::WebSocket(err.to_string())
 }
 
 #[cfg(test)]

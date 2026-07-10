@@ -9,6 +9,8 @@ pub enum Error {
     Url(String),
     Api { status: u16, body: String },
     RateLimited { retry_after_secs: Option<u64> },
+    WebSocket(String),
+    ReconnectExhausted { attempts: u32, last_error: String },
     Invalid(String),
 }
 
@@ -23,6 +25,14 @@ impl fmt::Display for Error {
                 Some(seconds) => write!(f, "api rate limited; retry after {seconds}s"),
                 None => f.write_str("api rate limited"),
             },
+            Self::WebSocket(msg) => write!(f, "websocket error: {msg}"),
+            Self::ReconnectExhausted {
+                attempts,
+                last_error,
+            } => write!(
+                f,
+                "websocket reconnect exhausted after {attempts} attempts: {last_error}"
+            ),
         }
     }
 }
@@ -38,5 +48,22 @@ impl From<reqwest::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(value: serde_json::Error) -> Self {
         Self::Json(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reconnect_exhaustion_is_typed_and_redacted() {
+        let err = Error::ReconnectExhausted {
+            attempts: 3,
+            last_error: "connection reset".into(),
+        };
+        assert_eq!(
+            err.to_string(),
+            "websocket reconnect exhausted after 3 attempts: connection reset"
+        );
     }
 }
