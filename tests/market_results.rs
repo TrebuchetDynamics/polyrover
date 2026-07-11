@@ -33,7 +33,7 @@ fn serve_json(body: &'static str) -> (String, mpsc::Receiver<String>, thread::Jo
 #[test]
 fn resolves_exact_causal_market_result_through_polyrover_clients() {
     let (gamma_url, gamma_request, gamma_server) = serve_json(
-        r#"[{"conditionId":"condition-1","slug":"btc-updown","closed":true,"closedTime":"2026-07-10T12:05:03Z","clobTokenIds":"[\"token-up\",\"token-down\"]","outcomePrices":["1","0"]}]"#,
+        r#"{"conditionId":"condition-1","slug":"btc-updown","closed":true,"closedTime":"2026-07-10T12:05:03Z","clobTokenIds":"[\"token-up\",\"token-down\"]","outcomePrices":["1","0"]}"#,
     );
     let (clob_url, clob_request, clob_server) = serve_json(
         r#"{"condition_id":"condition-1","closed":true,"tokens":[{"token_id":"token-up","winner":true},{"token_id":"token-down","winner":false}]}"#,
@@ -61,7 +61,10 @@ fn resolves_exact_causal_market_result_through_polyrover_clients() {
     );
     assert_eq!(result.observed_at, observed_at);
     assert!(result.source.contains("clob:/markets/condition-1"));
-    assert!(gamma_request.recv().unwrap().starts_with("GET /markets?"));
+    assert!(gamma_request
+        .recv()
+        .unwrap()
+        .starts_with("GET /markets/slug/btc-updown "));
     assert!(clob_request
         .recv()
         .unwrap()

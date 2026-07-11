@@ -64,20 +64,15 @@ impl Resolver {
                 "market_results: condition_id is required".into(),
             ));
         }
-        let params = if market.slug.trim().is_empty() {
-            MarketParams {
+        let gamma_markets = if market.slug.trim().is_empty() {
+            self.gamma.markets(&MarketParams {
                 condition_ids: vec![condition_id.into()],
                 ..Default::default()
-            }
+            })?
         } else {
-            MarketParams {
-                slug: vec![market.slug.trim().into()],
-                ..Default::default()
-            }
+            vec![self.gamma.market_by_slug(market.slug.trim())?]
         };
-        let Some((gamma_winner, resolved_at)) = self
-            .gamma
-            .markets(&params)?
+        let Some((gamma_winner, resolved_at)) = gamma_markets
             .iter()
             .find_map(|row| exact_gamma_result(row, market))
         else {

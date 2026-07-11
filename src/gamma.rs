@@ -44,6 +44,11 @@ impl Client {
         self.transport.get_json(&format!("/markets/{}", escape(id)))
     }
 
+    pub fn market_by_slug(&self, slug: &str) -> Result<Market> {
+        self.transport
+            .get_json(&format!("/markets/slug/{}", escape(slug)))
+    }
+
     pub fn events(&self, params: &EventParams) -> Result<Vec<Event>> {
         self.transport.get_json(&params.path("/events"))
     }
