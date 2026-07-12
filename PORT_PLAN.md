@@ -18,7 +18,12 @@ Source: `../polygolem` (Go 1.25 module `github.com/TrebuchetDynamics/polygolem`)
 12. Add bridge dry-run/DTOs and CLOB order/cancel DTOs. ✅
 13. Add offline wallet address derivation/readiness helpers. ✅
 14. Add typed public market events, including market lifecycle events. ✅
-15. Expand full async WebSocket callback/reconnect parity.
+15. Expand full async WebSocket callback/reconnect parity. ✅ (adapted)
+    Reconnect parity shipped: in-place reconnect preserves stream stats,
+    dedup, and tracked snapshots, records the reconnect, and resubscribes
+    only when assets are tracked (`src/stream_client.rs`). The Go
+    callback/background-loop layer is intentionally not ported — the
+    synchronous pull-based `MarketWsClient` API is the parity surface.
 16. Only after parity tests: authenticated CLOB reads.
 17. Last, with explicit owner approval: signing, wallet, relayer, bridge, and live order paths.
 
