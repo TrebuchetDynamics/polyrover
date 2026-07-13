@@ -40,6 +40,7 @@ pub struct MarketWsClient {
     tracker: Tracker,
     subscriptions: Vec<String>,
     last_ping: Instant,
+    last_frame_at: Instant,
 }
 
 impl MarketWsClient {
@@ -55,6 +56,7 @@ impl MarketWsClient {
             tracker: Tracker::new(),
             subscriptions: Vec::new(),
             last_ping: Instant::now(),
+            last_frame_at: Instant::now(),
         })
     }
 
@@ -70,6 +72,7 @@ impl MarketWsClient {
             tracker: Tracker::new(),
             subscriptions: Vec::new(),
             last_ping: Instant::now(),
+            last_frame_at: Instant::now(),
         })
     }
 
@@ -111,6 +114,18 @@ impl MarketWsClient {
 
     pub fn read_raw_with_status(&mut self, observed_at_ms: i64) -> Result<MarketRead> {
         let mut reconnected = false;
+        if self.config.pong_timeout_secs > 0
+            && self.last_frame_at.elapsed() >= Duration::from_secs(self.config.pong_timeout_secs)
+        {
+            if !self.config.reconnect {
+                return Err(Error::WebSocket(format!(
+                    "no frame received within pong timeout ({}s)",
+                    self.config.pong_timeout_secs
+                )));
+            }
+            self.reconnect_and_resubscribe()?;
+            reconnected = true;
+        }
         if self.last_ping.elapsed() >= Duration::from_secs(self.config.ping_interval_secs.max(1)) {
             if let Err(err) = self.ping() {
                 if !self.config.reconnect {
@@ -121,7 +136,10 @@ impl MarketWsClient {
             }
         }
         let message = match self.socket.read() {
-            Ok(message) => message,
+            Ok(message) => {
+                self.last_frame_at = Instant::now();
+                message
+            }
             Err(tungstenite::Error::Io(err))
                 if matches!(err.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) =>
             {
@@ -199,6 +217,7 @@ impl MarketWsClient {
         self.stats.mark_connected();
         self.stats.record_reconnect();
         self.last_ping = Instant::now();
+        self.last_frame_at = Instant::now();
         if self.subscriptions.is_empty() {
             return Ok(());
         }
@@ -566,6 +585,49 @@ mod tests {
         }
         assert_eq!(rows[0].event_type, "new_market");
         client.close().unwrap();
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn silent_connection_past_pong_timeout_triggers_reconnect() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut socket = tungstenite::accept(stream).unwrap();
+            assert!(socket.read().unwrap().to_string().contains("token-1"));
+            // Stay connected but never send a frame: a half-open peer.
+
+            let (stream, _) = listener.accept().unwrap();
+            let mut replacement = tungstenite::accept(stream).unwrap();
+            assert!(replacement.read().unwrap().to_string().contains("token-1"));
+            replacement
+                .send(Message::Text(
+                    r#"{"event_type":"new_market","id":"market-2"}"#.into(),
+                ))
+                .unwrap();
+            drop(socket);
+        });
+        let mut client = MarketWsClient::connect(Config {
+            url: format!("ws://{address}"),
+            pong_timeout_secs: 1,
+            ping_interval_secs: 3600,
+            ..Default::default()
+        })
+        .unwrap();
+        client.subscribe_assets(&["token-1".into()]).unwrap();
+
+        let deadline = Instant::now() + Duration::from_secs(8);
+        let mut rows = Vec::new();
+        while rows.is_empty() {
+            assert!(
+                Instant::now() < deadline,
+                "client never reconnected away from the silent connection"
+            );
+            rows = client.read_raw(1).unwrap();
+        }
+        assert_eq!(rows[0].event_type, "new_market");
+        assert_eq!(client.stats().reconnects, 1);
         server.join().unwrap();
     }
 
