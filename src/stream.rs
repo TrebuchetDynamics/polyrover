@@ -206,6 +206,12 @@ pub struct StreamStatsSnapshot {
     pub duplicate_messages: i64,
     pub invalid_messages: i64,
     pub reconnects: i64,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub connected_at: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub disconnected_at: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub last_reconnect_at: String,
     pub last_message_at_ms: i64,
     pub event_counts: HashMap<String, i64>,
 }
@@ -231,9 +237,11 @@ impl StreamStats {
     }
     pub fn mark_connected(&mut self) {
         self.snapshot.state = "connected".into();
+        self.snapshot.connected_at = chrono::Utc::now().to_rfc3339();
     }
     pub fn mark_disconnected(&mut self) {
         self.snapshot.state = "disconnected".into();
+        self.snapshot.disconnected_at = chrono::Utc::now().to_rfc3339();
     }
     pub fn record_event(&mut self, event_type: &str, at_ms: i64) {
         self.snapshot.messages_received += 1;
@@ -254,6 +262,7 @@ impl StreamStats {
     }
     pub fn record_reconnect(&mut self) {
         self.snapshot.reconnects += 1;
+        self.snapshot.last_reconnect_at = chrono::Utc::now().to_rfc3339();
     }
     pub fn snapshot(&self) -> StreamStatsSnapshot {
         self.snapshot.clone()
@@ -457,5 +466,26 @@ mod tests {
         assert_eq!(snap.messages_received, 1);
         assert_eq!(snap.event_counts["book"], 1);
         assert_eq!(snap.duplicate_messages, 1);
+    }
+
+    #[test]
+    fn stats_record_connection_lifecycle_timestamps() {
+        let mut stats = StreamStats::new("market");
+        let idle = stats.snapshot();
+        assert!(idle.connected_at.is_empty());
+        assert!(idle.disconnected_at.is_empty());
+        assert!(idle.last_reconnect_at.is_empty());
+
+        stats.mark_connected();
+        stats.mark_disconnected();
+        stats.record_reconnect();
+        let snap = stats.snapshot();
+        assert!(!snap.connected_at.is_empty());
+        assert!(!snap.disconnected_at.is_empty());
+        assert!(!snap.last_reconnect_at.is_empty());
+        assert!(snap
+            .connected_at
+            .parse::<chrono::DateTime<chrono::Utc>>()
+            .is_ok());
     }
 }
