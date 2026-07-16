@@ -8,7 +8,7 @@ license = "MIT"
 
 [features]
 default = ["public"]
-public = ["dep:reqwest", "dep:tungstenite"]
+public = ["dep:futures-util", "dep:reqwest", "dep:tokio", "dep:tokio-tungstenite", "dep:tungstenite"]
 authenticated = ["public", "dep:base64", "dep:hmac", "dep:sha2"]
 wallet = ["dep:hex", "dep:sha3"]
 execution = ["authenticated", "wallet"]
@@ -20,12 +20,18 @@ base64 = { version = "0.22", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 hex = { version = "0.4", optional = true }
 hmac = { version = "0.12", optional = true }
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"], optional = true }
+futures-util = { version = "0.3", optional = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["arbitrary_precision"] }
 sha2 = { version = "0.10", optional = true }
 sha3 = { version = "0.10", optional = true }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "sync", "time"], optional = true }
+tokio-tungstenite = { version = "0.28", default-features = false, features = ["connect", "rustls-tls-webpki-roots"], optional = true }
 tungstenite = { version = "0.28", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
 
 [lib]
 name = "polyrover"

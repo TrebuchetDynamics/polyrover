@@ -54,51 +54,51 @@ impl Client {
         })
     }
 
-    pub fn search(&self, params: &SearchParams) -> Result<SearchResponse> {
-        self.gamma.search(params)
+    pub async fn search(&self, params: &SearchParams) -> Result<SearchResponse> {
+        self.gamma.search(params).await
     }
 
-    pub fn markets(&self, params: &MarketParams) -> Result<Vec<Market>> {
-        self.gamma.markets(params)
+    pub async fn markets(&self, params: &MarketParams) -> Result<Vec<Market>> {
+        self.gamma.markets(params).await
     }
 
-    pub fn market_by_slug(&self, slug: &str) -> Result<Market> {
-        self.gamma.market_by_slug(slug)
+    pub async fn market_by_slug(&self, slug: &str) -> Result<Market> {
+        self.gamma.market_by_slug(slug).await
     }
 
-    pub fn order_book(&self, token_id: &str) -> Result<ClobOrderBook> {
-        self.clob.order_book(token_id)
+    pub async fn order_book(&self, token_id: &str) -> Result<ClobOrderBook> {
+        self.clob.order_book(token_id).await
     }
 
-    pub fn order_books(&self, token_ids: &[String]) -> Result<Vec<ClobOrderBook>> {
-        self.clob.order_books(token_ids)
+    pub async fn order_books(&self, token_ids: &[String]) -> Result<Vec<ClobOrderBook>> {
+        self.clob.order_books(token_ids).await
     }
 
-    pub fn price(&self, token_id: &str, side: &str) -> Result<String> {
-        self.clob.price(token_id, side)
+    pub async fn price(&self, token_id: &str, side: &str) -> Result<String> {
+        self.clob.price(token_id, side).await
     }
 
-    pub fn current_positions(&self, user: &str, limit: u32) -> Result<Vec<Position>> {
-        self.data.current_positions(user, limit)
+    pub async fn current_positions(&self, user: &str, limit: u32) -> Result<Vec<Position>> {
+        self.data.current_positions(user, limit).await
     }
 
-    pub fn trades(&self, user: &str, limit: u32) -> Result<Vec<Trade>> {
-        self.data.trades(user, limit)
+    pub async fn trades(&self, user: &str, limit: u32) -> Result<Vec<Trade>> {
+        self.data.trades(user, limit).await
     }
 
-    pub fn trader_leaderboard(&self, limit: u32) -> Result<Vec<LeaderboardRow>> {
-        self.data.trader_leaderboard(limit)
+    pub async fn trader_leaderboard(&self, limit: u32) -> Result<Vec<LeaderboardRow>> {
+        self.data.trader_leaderboard(limit).await
     }
 
-    pub fn health(&self) -> ClientHealth {
+    pub async fn health(&self) -> ClientHealth {
         ClientHealth {
-            gamma: health_label(self.gamma.health_check().is_ok()),
-            clob: health_label(self.clob.health().is_ok()),
+            gamma: health_label(self.gamma.health_check().await.is_ok()),
+            clob: health_label(self.clob.health().await.is_ok()),
         }
     }
 
-    pub fn simulate(&self, request: SimulationRequest) -> Result<SimulationResult> {
-        let book = self.order_book(&request.token_id)?;
+    pub async fn simulate(&self, request: SimulationRequest) -> Result<SimulationResult> {
+        let book = self.order_book(&request.token_id).await?;
         simulation::simulate_book(&book, request)
     }
 }

@@ -40,7 +40,7 @@ pub struct CryptoMarket {
     pub down_token_id: String,
 }
 
-pub fn discover_window_markets(
+pub async fn discover_window_markets(
     client: &crate::Client,
     assets: &[String],
     start: DateTime<Utc>,
@@ -60,12 +60,14 @@ pub fn discover_window_markets(
         }
         window += Duration::minutes(5);
     }
-    let rows = client.markets(&crate::gamma::MarketParams {
-        slug: targets.keys().cloned().collect(),
-        active: Some(true),
-        closed: Some(false),
-        ..Default::default()
-    })?;
+    let rows = client
+        .markets(&crate::gamma::MarketParams {
+            slug: targets.keys().cloned().collect(),
+            active: Some(true),
+            closed: Some(false),
+            ..Default::default()
+        })
+        .await?;
     let mut markets = rows
         .into_iter()
         .filter_map(|row| crypto_market_from_row(row, &targets))
@@ -81,7 +83,7 @@ pub fn discover_window_markets(
     Ok(markets)
 }
 
-pub fn discover_complete_window_markets(
+pub async fn discover_complete_window_markets(
     client: &crate::Client,
     assets: &[String],
     start: DateTime<Utc>,
@@ -121,7 +123,8 @@ pub fn discover_complete_window_markets(
         window += Duration::minutes(5);
     }
 
-    let mut found = discover_window_markets(client, assets, start, through)?
+    let mut found = discover_window_markets(client, assets, start, through)
+        .await?
         .into_iter()
         .filter(|market| complete_market_valid(market, &targets))
         .map(|market| (market.slug.clone(), market))
@@ -133,7 +136,7 @@ pub fn discover_complete_window_markets(
         .cloned()
         .collect::<Vec<_>>();
     for slug in &batch_missing {
-        match client.market_by_slug(slug) {
+        match client.market_by_slug(slug).await {
             Ok(row) => {
                 if let Some(market) = crypto_market_from_row(row, &targets)
                     .filter(|market| complete_market_valid(market, &targets))
@@ -526,8 +529,8 @@ mod tests {
             .collect()
     }
 
-    #[test]
-    fn complete_discovery_uses_one_batch_without_fallback() {
+    #[tokio::test]
+    async fn complete_discovery_uses_one_batch_without_fallback() {
         let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
         let slugs = three_window_slugs(start);
         let body = serde_json::to_string(
@@ -545,6 +548,7 @@ mod tests {
             start,
             start + Duration::minutes(10),
         )
+        .await
         .unwrap();
         let requests = server.join().unwrap();
 
@@ -552,8 +556,8 @@ mod tests {
         assert_eq!(requests.len(), 1);
     }
 
-    #[test]
-    fn partial_batch_fetches_only_missing_slug() {
+    #[tokio::test]
+    async fn partial_batch_fetches_only_missing_slug() {
         let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
         let slugs = three_window_slugs(start);
         let batch = serde_json::to_string(
@@ -572,6 +576,7 @@ mod tests {
             start,
             start + Duration::minutes(10),
         )
+        .await
         .unwrap();
         let requests = server.join().unwrap();
 
@@ -580,8 +585,8 @@ mod tests {
         assert!(requests[1].contains(&format!("/markets/slug/{}", slugs[2])));
     }
 
-    #[test]
-    fn duplicate_batch_identity_is_retried_by_slug() {
+    #[tokio::test]
+    async fn duplicate_batch_identity_is_retried_by_slug() {
         let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
         let slugs = three_window_slugs(start);
         let mut duplicate = market_json(&slugs[2]);
@@ -601,6 +606,7 @@ mod tests {
             start,
             start + Duration::minutes(10),
         )
+        .await
         .unwrap();
         let requests = server.join().unwrap();
 
@@ -609,8 +615,8 @@ mod tests {
         assert!(requests[1].contains(&format!("/markets/slug/{}", slugs[2])));
     }
 
-    #[test]
-    fn unresolved_fallback_reports_missing_slug() {
+    #[tokio::test]
+    async fn unresolved_fallback_reports_missing_slug() {
         let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
         let slugs = three_window_slugs(start);
         let batch = serde_json::to_string(
@@ -628,6 +634,7 @@ mod tests {
             start,
             start + Duration::minutes(10),
         )
+        .await
         .unwrap_err();
         server.join().unwrap();
 
@@ -640,8 +647,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn failed_batch_does_not_fan_out() {
+    #[tokio::test]
+    async fn failed_batch_does_not_fan_out() {
         let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
         let (client, server) = mock_client(vec![(429, "{}".into())]);
 
@@ -651,6 +658,7 @@ mod tests {
             start,
             start + Duration::minutes(10),
         )
+        .await
         .unwrap_err();
         let requests = server.join().unwrap();
 
@@ -658,8 +666,8 @@ mod tests {
         assert_eq!(requests.len(), 1);
     }
 
-    #[test]
-    fn strict_discovery_rejects_invalid_inputs_before_network_access() {
+    #[tokio::test]
+    async fn strict_discovery_rejects_invalid_inputs_before_network_access() {
         let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
         let cases = [
             (Vec::new(), start, start),
@@ -673,13 +681,17 @@ mod tests {
         ];
         for (assets, from, through) in cases {
             let (client, server) = mock_client(Vec::new());
-            assert!(discover_complete_window_markets(&client, &assets, from, through).is_err());
+            assert!(
+                discover_complete_window_markets(&client, &assets, from, through)
+                    .await
+                    .is_err()
+            );
             assert!(server.join().unwrap().is_empty());
         }
     }
 
-    #[test]
-    fn discover_window_markets_resolves_gamma_tokens() -> crate::Result<()> {
+    #[tokio::test]
+    async fn discover_window_markets_resolves_gamma_tokens() -> crate::Result<()> {
         use std::{
             io::{Read, Write},
             net::TcpListener,
@@ -710,7 +722,7 @@ mod tests {
             data_base_url: base,
         })?;
         let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
-        let rows = discover_window_markets(&client, &["BTC".into()], start, start)?;
+        let rows = discover_window_markets(&client, &["BTC".into()], start, start).await?;
         server.join().unwrap();
 
         assert_eq!(rows.len(), 1);

@@ -24,12 +24,12 @@ impl Config {
 #[derive(Clone)]
 pub struct Client {
     base_url: String,
-    http: reqwest::blocking::Client,
+    http: reqwest::Client,
 }
 
 impl Client {
     pub fn new(config: Config) -> Result<Self> {
-        let http = reqwest::blocking::Client::builder()
+        let http = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(config.timeout_secs))
             .user_agent(config.user_agent)
             .build()?;
@@ -39,18 +39,22 @@ impl Client {
         })
     }
 
-    pub fn get_json<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
-        let body = checked_body(self.http.get(self.url(path)?).send()?)?;
+    pub async fn get_json<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
+        let body = checked_body(self.http.get(self.url(path)?).send().await?).await?;
         Ok(serde_json::from_str(&body)?)
     }
 
-    pub fn post_json<B: Serialize, T: DeserializeOwned>(&self, path: &str, body: &B) -> Result<T> {
-        let body = checked_body(self.http.post(self.url(path)?).json(body).send()?)?;
+    pub async fn post_json<B: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<T> {
+        let body = checked_body(self.http.post(self.url(path)?).json(body).send().await?).await?;
         Ok(serde_json::from_str(&body)?)
     }
 
-    pub fn get_raw(&self, path: &str) -> Result<String> {
-        checked_body(self.http.get(self.url(path)?).send()?)
+    pub async fn get_raw(&self, path: &str) -> Result<String> {
+        checked_body(self.http.get(self.url(path)?).send().await?).await
     }
 
     fn url(&self, path: &str) -> Result<String> {
@@ -61,14 +65,14 @@ impl Client {
     }
 }
 
-fn checked_body(response: reqwest::blocking::Response) -> Result<String> {
+async fn checked_body(response: reqwest::Response) -> Result<String> {
     let status = response.status();
     let retry_after_secs = response
         .headers()
         .get(reqwest::header::RETRY_AFTER)
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.parse::<u64>().ok());
-    let body = response.text()?;
+    let body = response.text().await?;
     if status.as_u16() == 429 {
         return Err(Error::RateLimited { retry_after_secs });
     }
@@ -100,8 +104,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn rate_limit_preserves_retry_after() {
+    #[tokio::test]
+    async fn rate_limit_preserves_retry_after() {
         use std::{
             io::{Read, Write},
             net::TcpListener,
@@ -120,7 +124,7 @@ mod tests {
         });
         let client = Client::new(Config::new(format!("http://{address}"))).unwrap();
         assert!(matches!(
-            client.get_raw("/limited"),
+            client.get_raw("/limited").await,
             Err(Error::RateLimited {
                 retry_after_secs: Some(3)
             })

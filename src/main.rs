@@ -7,8 +7,9 @@ use polyrover::{
 };
 use serde_json::json;
 
-fn main() {
-    if let Err(err) = run() {
+#[tokio::main]
+async fn main() {
+    if let Err(err) = run().await {
         let body = output::error("polyrover", "error", &err.to_string())
             .unwrap_or_else(|_| format!("error: {err}\n"));
         eprint!("{body}");
@@ -16,7 +17,7 @@ fn main() {
     }
 }
 
-fn run() -> Result<()> {
+async fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).filter(|a| a != "--json").collect();
     let client = Client::new(ClientConfig::default())?;
     match args.as_slice() {
@@ -28,26 +29,30 @@ fn run() -> Result<()> {
             print_help();
             Ok(())
         }
-        [cmd] if cmd == "ping" => ping(&client),
+        [cmd] if cmd == "ping" => ping(&client).await,
         [group, cmd, rest @ ..] if group == "gamma" && cmd == "search" => {
-            gamma_search(&client, rest)
+            gamma_search(&client, rest).await
         }
         [group, cmd, rest @ ..] if group == "gamma" && cmd == "markets" => {
-            gamma_markets(&client, rest)
+            gamma_markets(&client, rest).await
         }
-        [group, cmd, rest @ ..] if group == "clob" && cmd == "book" => clob_book(&client, rest),
-        [group, cmd, rest @ ..] if group == "clob" && cmd == "price" => clob_price(&client, rest),
+        [group, cmd, rest @ ..] if group == "clob" && cmd == "book" => {
+            clob_book(&client, rest).await
+        }
+        [group, cmd, rest @ ..] if group == "clob" && cmd == "price" => {
+            clob_price(&client, rest).await
+        }
         [group, cmd, rest @ ..] if group == "clob" && cmd == "simulate" => {
-            clob_simulate(&client, rest)
+            clob_simulate(&client, rest).await
         }
         [group, cmd, rest @ ..] if group == "analytics" && cmd == "positions" => {
-            data_positions(&client, rest)
+            data_positions(&client, rest).await
         }
         [group, cmd, rest @ ..] if group == "analytics" && cmd == "trades" => {
-            data_trades(&client, rest)
+            data_trades(&client, rest).await
         }
         [group, cmd, rest @ ..] if group == "analytics" && cmd == "leaderboard" => {
-            data_leaderboard(&client, rest)
+            data_leaderboard(&client, rest).await
         }
         [group, cmd, rest @ ..] if group == "stream" && cmd == "watch" => stream_watch(rest),
         [group, cmd, rest @ ..] if group == "sim" && cmd == "reset" => sim_reset(rest),
@@ -60,46 +65,53 @@ fn run() -> Result<()> {
     }
 }
 
-fn ping(client: &Client) -> Result<()> {
-    print_success("ping", client.health())
+async fn ping(client: &Client) -> Result<()> {
+    print_success("ping", client.health().await)
 }
 
-fn gamma_search(client: &Client, args: &[String]) -> Result<()> {
+async fn gamma_search(client: &Client, args: &[String]) -> Result<()> {
     let query = flag(args, "--query").unwrap_or_default();
     let limit = flag(args, "--limit").and_then(|v| v.parse().ok());
     print_success(
         "gamma search",
-        client.search(&gamma::SearchParams {
-            q: query,
-            limit_per_type: limit,
-            ..Default::default()
-        })?,
+        client
+            .search(&gamma::SearchParams {
+                q: query,
+                limit_per_type: limit,
+                ..Default::default()
+            })
+            .await?,
     )
 }
 
-fn gamma_markets(client: &Client, args: &[String]) -> Result<()> {
+async fn gamma_markets(client: &Client, args: &[String]) -> Result<()> {
     let limit = flag(args, "--limit").and_then(|v| v.parse().ok());
     print_success(
         "gamma markets",
-        client.markets(&gamma::MarketParams {
-            limit,
-            ..Default::default()
-        })?,
+        client
+            .markets(&gamma::MarketParams {
+                limit,
+                ..Default::default()
+            })
+            .await?,
     )
 }
 
-fn clob_book(client: &Client, args: &[String]) -> Result<()> {
+async fn clob_book(client: &Client, args: &[String]) -> Result<()> {
     let token = flag(args, "--token-id").unwrap_or_default();
-    print_success("clob book", client.order_book(&token)?)
+    print_success("clob book", client.order_book(&token).await?)
 }
 
-fn clob_price(client: &Client, args: &[String]) -> Result<()> {
+async fn clob_price(client: &Client, args: &[String]) -> Result<()> {
     let token = flag(args, "--token-id").unwrap_or_default();
     let side = flag(args, "--side").unwrap_or_else(|| "buy".into());
-    print_success("clob price", json!({"price": client.price(&token, &side)?}))
+    print_success(
+        "clob price",
+        json!({"price": client.price(&token, &side).await?}),
+    )
 }
 
-fn clob_simulate(client: &Client, args: &[String]) -> Result<()> {
+async fn clob_simulate(client: &Client, args: &[String]) -> Result<()> {
     let token = flag(args, "--token")
         .or_else(|| flag(args, "--token-id"))
         .unwrap_or_default();
@@ -108,39 +120,44 @@ fn clob_simulate(client: &Client, args: &[String]) -> Result<()> {
     let limit_price = flag(args, "--limit-price").unwrap_or_default();
     print_success(
         "clob simulate",
-        client.simulate(simulation::Request {
-            token_id: token,
-            side,
-            amount,
-            limit_price,
-        })?,
+        client
+            .simulate(simulation::Request {
+                token_id: token,
+                side,
+                amount,
+                limit_price,
+            })
+            .await?,
     )
 }
 
-fn data_positions(client: &Client, args: &[String]) -> Result<()> {
+async fn data_positions(client: &Client, args: &[String]) -> Result<()> {
     let user = flag(args, "--user").unwrap_or_default();
     let limit = flag(args, "--limit")
         .and_then(|v| v.parse().ok())
         .unwrap_or(20);
     print_success(
         "analytics positions",
-        client.current_positions(&user, limit)?,
+        client.current_positions(&user, limit).await?,
     )
 }
 
-fn data_trades(client: &Client, args: &[String]) -> Result<()> {
+async fn data_trades(client: &Client, args: &[String]) -> Result<()> {
     let user = flag(args, "--user").unwrap_or_default();
     let limit = flag(args, "--limit")
         .and_then(|v| v.parse().ok())
         .unwrap_or(20);
-    print_success("analytics trades", client.trades(&user, limit)?)
+    print_success("analytics trades", client.trades(&user, limit).await?)
 }
 
-fn data_leaderboard(client: &Client, args: &[String]) -> Result<()> {
+async fn data_leaderboard(client: &Client, args: &[String]) -> Result<()> {
     let limit = flag(args, "--limit")
         .and_then(|v| v.parse().ok())
         .unwrap_or(20);
-    print_success("analytics leaderboard", client.trader_leaderboard(limit)?)
+    print_success(
+        "analytics leaderboard",
+        client.trader_leaderboard(limit).await?,
+    )
 }
 
 fn sim_reset(args: &[String]) -> Result<()> {

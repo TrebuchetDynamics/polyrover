@@ -28,46 +28,57 @@ impl Client {
         })
     }
 
-    pub fn health(&self) -> Result<()> {
-        self.transport.get_raw("/").map(|_| ())
+    pub async fn health(&self) -> Result<()> {
+        self.transport.get_raw("/").await.map(|_| ())
     }
 
-    pub fn current_positions(&self, user: &str, limit: u32) -> Result<Vec<Position>> {
-        self.transport.get_json(&path(
-            "/positions",
-            &[pair("user", user), limit_pair(limit)],
-        ))
+    pub async fn current_positions(&self, user: &str, limit: u32) -> Result<Vec<Position>> {
+        self.transport
+            .get_json(&path(
+                "/positions",
+                &[pair("user", user), limit_pair(limit)],
+            ))
+            .await
     }
 
-    pub fn closed_positions(&self, user: &str, limit: u32) -> Result<Vec<ClosedPosition>> {
-        self.transport.get_json(&path(
-            "/closed-positions",
-            &[pair("user", user), limit_pair(limit)],
-        ))
+    pub async fn closed_positions(&self, user: &str, limit: u32) -> Result<Vec<ClosedPosition>> {
+        self.transport
+            .get_json(&path(
+                "/closed-positions",
+                &[pair("user", user), limit_pair(limit)],
+            ))
+            .await
     }
 
-    pub fn trades(&self, user: &str, limit: u32) -> Result<Vec<Trade>> {
+    pub async fn trades(&self, user: &str, limit: u32) -> Result<Vec<Trade>> {
         self.transport
             .get_json(&path("/trades", &[pair("user", user), limit_pair(limit)]))
+            .await
     }
 
-    pub fn market_trades(&self, market: &str, limit: u32) -> Result<Vec<Trade>> {
-        self.transport.get_json(&path(
-            "/trades",
-            &[pair("market", market), limit_pair(limit)],
-        ))
+    pub async fn market_trades(&self, market: &str, limit: u32) -> Result<Vec<Trade>> {
+        self.transport
+            .get_json(&path(
+                "/trades",
+                &[pair("market", market), limit_pair(limit)],
+            ))
+            .await
     }
 
-    pub fn activity(&self, user: &str, limit: u32) -> Result<Vec<Activity>> {
+    pub async fn activity(&self, user: &str, limit: u32) -> Result<Vec<Activity>> {
         self.transport
             .get_json(&path("/activity", &[pair("user", user), limit_pair(limit)]))
+            .await
     }
 
-    pub fn top_holders(&self, market: &str, limit: u32) -> Result<Vec<Holder>> {
-        let groups: Vec<HolderGroup> = self.transport.get_json(&path(
-            "/holders",
-            &[pair("market", market), limit_pair(limit)],
-        ))?;
+    pub async fn top_holders(&self, market: &str, limit: u32) -> Result<Vec<Holder>> {
+        let groups: Vec<HolderGroup> = self
+            .transport
+            .get_json(&path(
+                "/holders",
+                &[pair("market", market), limit_pair(limit)],
+            ))
+            .await?;
         let mut out = Vec::new();
         for group in groups {
             for mut holder in group.holders {
@@ -83,10 +94,11 @@ impl Client {
         Ok(out)
     }
 
-    pub fn total_value(&self, user: &str) -> Result<PortfolioValue> {
+    pub async fn total_value(&self, user: &str) -> Result<PortfolioValue> {
         let raw = self
             .transport
-            .get_raw(&path("/value", &[pair("user", user)]))?;
+            .get_raw(&path("/value", &[pair("user", user)]))
+            .await?;
         let mut value = match serde_json::from_str::<PortfolioValue>(&raw) {
             Ok(row) => row,
             Err(_) => serde_json::from_str::<Vec<PortfolioValue>>(&raw)?
@@ -100,20 +112,22 @@ impl Client {
         Ok(value)
     }
 
-    pub fn markets_traded(&self, user: &str) -> Result<TotalMarketsTraded> {
+    pub async fn markets_traded(&self, user: &str) -> Result<TotalMarketsTraded> {
         let mut row: TotalMarketsTraded = self
             .transport
-            .get_json(&path("/traded", &[pair("user", user)]))?;
+            .get_json(&path("/traded", &[pair("user", user)]))
+            .await?;
         if row.markets_traded == 0 {
             row.markets_traded = row.traded;
         }
         Ok(row)
     }
 
-    pub fn open_interest(&self, market: &str) -> Result<OpenInterest> {
+    pub async fn open_interest(&self, market: &str) -> Result<OpenInterest> {
         Ok(self
             .transport
-            .get_json::<Vec<OpenInterest>>(&path("/oi", &[pair("market", market)]))?
+            .get_json::<Vec<OpenInterest>>(&path("/oi", &[pair("market", market)]))
+            .await?
             .into_iter()
             .next()
             .unwrap_or(OpenInterest {
@@ -122,15 +136,17 @@ impl Client {
             }))
     }
 
-    pub fn trader_leaderboard(&self, limit: u32) -> Result<Vec<LeaderboardRow>> {
+    pub async fn trader_leaderboard(&self, limit: u32) -> Result<Vec<LeaderboardRow>> {
         self.transport
             .get_json(&path("/v1/leaderboard", &[limit_pair(limit)]))
+            .await
     }
 
-    pub fn live_volume(&self, event_id: u32) -> Result<LiveVolumeResponse> {
+    pub async fn live_volume(&self, event_id: u32) -> Result<LiveVolumeResponse> {
         let raw = self
             .transport
-            .get_raw(&path("/live-volume", &[pair("id", &event_id.to_string())]))?;
+            .get_raw(&path("/live-volume", &[pair("id", &event_id.to_string())]))
+            .await?;
         match serde_json::from_str::<LiveVolumeResponse>(&raw) {
             Ok(row) => Ok(row),
             Err(_) => Ok(serde_json::from_str::<Vec<LiveVolumeResponse>>(&raw)?

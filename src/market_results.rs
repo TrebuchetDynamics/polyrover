@@ -50,11 +50,11 @@ impl Resolver {
         })
     }
 
-    pub fn resolve(&self, market: &MarketRef) -> Result<Option<MarketResult>> {
-        self.resolve_at(market, Utc::now())
+    pub async fn resolve(&self, market: &MarketRef) -> Result<Option<MarketResult>> {
+        self.resolve_at(market, Utc::now()).await
     }
 
-    pub fn resolve_at(
+    pub async fn resolve_at(
         &self,
         market: &MarketRef,
         observed_at: DateTime<Utc>,
@@ -66,12 +66,14 @@ impl Resolver {
             ));
         }
         let gamma_markets = if market.slug.trim().is_empty() {
-            self.gamma.markets(&MarketParams {
-                condition_ids: vec![condition_id.into()],
-                ..Default::default()
-            })?
+            self.gamma
+                .markets(&MarketParams {
+                    condition_ids: vec![condition_id.into()],
+                    ..Default::default()
+                })
+                .await?
         } else {
-            vec![self.gamma.market_by_slug(market.slug.trim())?]
+            vec![self.gamma.market_by_slug(market.slug.trim()).await?]
         };
         let Some((gamma_winner, resolved_at)) = gamma_markets
             .iter()
@@ -84,7 +86,10 @@ impl Resolver {
                 "market_results: observation precedes resolution".into(),
             ));
         }
-        let outcome = self.clob.market_outcome(condition_id, &self.gamma_base_url);
+        let outcome = self
+            .clob
+            .market_outcome(condition_id, &self.gamma_base_url)
+            .await;
         if let Ok(outcome) = &outcome {
             if outcome.status == CLOB_OUTCOME_RESOLVED
                 && outcome.closed

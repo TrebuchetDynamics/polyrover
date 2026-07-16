@@ -24,43 +24,52 @@ impl Client {
         })
     }
 
-    pub fn health_check(&self) -> Result<HealthResponse> {
+    pub async fn health_check(&self) -> Result<HealthResponse> {
         self.transport
             .get_raw("/")
+            .await
             .map(|_| HealthResponse { data: "ok".into() })
     }
 
-    pub fn active_markets(&self) -> Result<Vec<Market>> {
+    pub async fn active_markets(&self) -> Result<Vec<Market>> {
         self.markets(&MarketParams {
             active: Some(true),
             closed: Some(false),
             ..Default::default()
         })
+        .await
     }
 
-    pub fn markets(&self, params: &MarketParams) -> Result<Vec<Market>> {
-        self.transport.get_json(&params.path("/markets"))
+    pub async fn markets(&self, params: &MarketParams) -> Result<Vec<Market>> {
+        self.transport.get_json(&params.path("/markets")).await
     }
 
-    pub fn market_by_id(&self, id: &str) -> Result<Market> {
-        self.transport.get_json(&format!("/markets/{}", escape(id)))
+    pub async fn market_by_id(&self, id: &str) -> Result<Market> {
+        self.transport
+            .get_json(&format!("/markets/{}", escape(id)))
+            .await
     }
 
-    pub fn market_by_slug(&self, slug: &str) -> Result<Market> {
+    pub async fn market_by_slug(&self, slug: &str) -> Result<Market> {
         self.transport
             .get_json(&format!("/markets/slug/{}", escape(slug)))
+            .await
     }
 
-    pub fn events(&self, params: &EventParams) -> Result<Vec<Event>> {
-        self.transport.get_json(&params.path("/events"))
+    pub async fn events(&self, params: &EventParams) -> Result<Vec<Event>> {
+        self.transport.get_json(&params.path("/events")).await
     }
 
-    pub fn event_by_id(&self, id: &str) -> Result<Event> {
-        self.transport.get_json(&format!("/events/{}", escape(id)))
+    pub async fn event_by_id(&self, id: &str) -> Result<Event> {
+        self.transport
+            .get_json(&format!("/events/{}", escape(id)))
+            .await
     }
 
-    pub fn search(&self, params: &SearchParams) -> Result<SearchResponse> {
-        self.transport.get_json(&params.path("/public-search"))
+    pub async fn search(&self, params: &SearchParams) -> Result<SearchResponse> {
+        self.transport
+            .get_json(&params.path("/public-search"))
+            .await
     }
 }
 

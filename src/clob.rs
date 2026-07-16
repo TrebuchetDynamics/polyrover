@@ -32,30 +32,33 @@ impl Client {
         })
     }
 
-    pub fn health(&self) -> Result<()> {
-        self.transport.get_raw("/").map(|_| ())
+    pub async fn health(&self) -> Result<()> {
+        self.transport.get_raw("/").await.map(|_| ())
     }
 
-    pub fn server_time(&self) -> Result<ClobServerTime> {
-        self.transport.get_json("/time")
+    pub async fn server_time(&self) -> Result<ClobServerTime> {
+        self.transport.get_json("/time").await
     }
 
-    pub fn markets(&self, next_cursor: &str) -> Result<ClobPaginatedMarkets> {
+    pub async fn markets(&self, next_cursor: &str) -> Result<ClobPaginatedMarkets> {
         self.transport
             .get_json(&cursor_path("/markets", next_cursor))
+            .await
     }
 
-    pub fn market(&self, condition_id: &str) -> Result<ClobMarket> {
+    pub async fn market(&self, condition_id: &str) -> Result<ClobMarket> {
         self.transport
             .get_json(&format!("/markets/{}", escape(condition_id)))
+            .await
     }
 
-    pub fn market_by_token(&self, token_id: &str) -> Result<ClobMarketByTokenResponse> {
+    pub async fn market_by_token(&self, token_id: &str) -> Result<ClobMarketByTokenResponse> {
         self.transport
             .get_json(&format!("/markets-by-token/{}", escape(token_id)))
+            .await
     }
 
-    pub fn market_outcome(
+    pub async fn market_outcome(
         &self,
         condition_id: &str,
         gamma_base_url: &str,
@@ -64,21 +67,24 @@ impl Client {
         if condition_id.is_empty() {
             return Err(Error::Invalid("clob: condition_id is required".into()));
         }
-        match self.market(condition_id) {
+        match self.market(condition_id).await {
             Ok(market) => Ok(outcome_from_clob_market(condition_id, market)),
             Err(err) if !gamma_base_url.trim().is_empty() => {
-                resolve_via_gamma(gamma_base_url, condition_id).or(Err(err))
+                resolve_via_gamma(gamma_base_url, condition_id)
+                    .await
+                    .or(Err(err))
             }
             Err(err) => Err(err),
         }
     }
 
-    pub fn order_book(&self, token_id: &str) -> Result<ClobOrderBook> {
+    pub async fn order_book(&self, token_id: &str) -> Result<ClobOrderBook> {
         self.transport
             .get_json(&format!("/book?token_id={}", escape(token_id)))
+            .await
     }
 
-    pub fn order_books(&self, token_ids: &[String]) -> Result<Vec<ClobOrderBook>> {
+    pub async fn order_books(&self, token_ids: &[String]) -> Result<Vec<ClobOrderBook>> {
         let params = token_ids
             .iter()
             .filter(|token_id| !token_id.trim().is_empty())
@@ -87,45 +93,53 @@ impl Client {
         if params.is_empty() {
             return Ok(Vec::new());
         }
-        self.transport.post_json("/books", &params)
+        self.transport.post_json("/books", &params).await
     }
 
-    pub fn price(&self, token_id: &str, side: &str) -> Result<String> {
-        let row: PriceResponse = self.transport.get_json(&format!(
-            "/price?token_id={}&side={}",
-            escape(token_id),
-            escape(side)
-        ))?;
+    pub async fn price(&self, token_id: &str, side: &str) -> Result<String> {
+        let row: PriceResponse = self
+            .transport
+            .get_json(&format!(
+                "/price?token_id={}&side={}",
+                escape(token_id),
+                escape(side)
+            ))
+            .await?;
         Ok(row.price)
     }
 
-    pub fn midpoint(&self, token_id: &str) -> Result<String> {
+    pub async fn midpoint(&self, token_id: &str) -> Result<String> {
         let row: MidpointResponse = self
             .transport
-            .get_json(&format!("/midpoint?token_id={}", escape(token_id)))?;
+            .get_json(&format!("/midpoint?token_id={}", escape(token_id)))
+            .await?;
         Ok(first_price(&[&row.mid, &row.mid_price]))
     }
 
-    pub fn spread(&self, token_id: &str) -> Result<String> {
+    pub async fn spread(&self, token_id: &str) -> Result<String> {
         let row: SpreadResponse = self
             .transport
-            .get_json(&format!("/spread?token_id={}", escape(token_id)))?;
+            .get_json(&format!("/spread?token_id={}", escape(token_id)))
+            .await?;
         Ok(row.spread)
     }
 
-    pub fn tick_size(&self, token_id: &str) -> Result<ClobTickSize> {
+    pub async fn tick_size(&self, token_id: &str) -> Result<ClobTickSize> {
         self.transport
             .get_json(&format!("/tick-size?token_id={}", escape(token_id)))
+            .await
     }
 
-    pub fn neg_risk(&self, token_id: &str) -> Result<ClobNegRiskInfo> {
+    pub async fn neg_risk(&self, token_id: &str) -> Result<ClobNegRiskInfo> {
         self.transport
             .get_json(&format!("/neg-risk?token_id={}", escape(token_id)))
+            .await
     }
 
-    pub fn simplified_markets(&self, next_cursor: &str) -> Result<ClobPaginatedMarkets> {
+    pub async fn simplified_markets(&self, next_cursor: &str) -> Result<ClobPaginatedMarkets> {
         self.transport
             .get_json(&cursor_path("/simplified-markets", next_cursor))
+            .await
     }
 }
 
@@ -189,12 +203,14 @@ fn winning_token_id(market: &ClobMarket) -> String {
     }
 }
 
-fn resolve_via_gamma(gamma_base_url: &str, condition_id: &str) -> Result<ClobMarketOutcome> {
+async fn resolve_via_gamma(gamma_base_url: &str, condition_id: &str) -> Result<ClobMarketOutcome> {
     let client = gamma::Client::new(gamma_base_url)?;
-    let markets = client.markets(&gamma::MarketParams {
-        condition_ids: vec![condition_id.into()],
-        ..Default::default()
-    })?;
+    let markets = client
+        .markets(&gamma::MarketParams {
+            condition_ids: vec![condition_id.into()],
+            ..Default::default()
+        })
+        .await?;
     if markets.into_iter().any(|m| m.closed) {
         return Ok(ClobMarketOutcome {
             status: CLOB_OUTCOME_UNRESOLVED.into(),

@@ -36,8 +36,8 @@ fn serve_json(body: &'static str) -> (String, mpsc::Receiver<String>, thread::Jo
     (format!("http://{address}"), received, handle)
 }
 
-#[test]
-fn client_searches_markets_through_one_public_interface() {
+#[tokio::test]
+async fn client_searches_markets_through_one_public_interface() {
     let (gamma_base_url, received, server) =
         serve_json(r#"{"events":[{"id":"event-1","title":"Bitcoin"}]}"#);
     let client = Client::new(ClientConfig {
@@ -52,6 +52,7 @@ fn client_searches_markets_through_one_public_interface() {
             limit_per_type: Some(1),
             ..SearchParams::default()
         })
+        .await
         .unwrap();
 
     assert_eq!(response.events[0].id, "event-1");
@@ -61,8 +62,8 @@ fn client_searches_markets_through_one_public_interface() {
     server.join().unwrap();
 }
 
-#[test]
-fn client_reads_clob_books_through_one_public_interface() {
+#[tokio::test]
+async fn client_reads_clob_books_through_one_public_interface() {
     let (clob_base_url, received, server) =
         serve_json(r#"{"asset_id":"token-1","bids":[],"asks":[]}"#);
     let client = Client::new(ClientConfig {
@@ -71,7 +72,7 @@ fn client_reads_clob_books_through_one_public_interface() {
     })
     .unwrap();
 
-    let book = client.order_book("token-1").unwrap();
+    let book = client.order_book("token-1").await.unwrap();
 
     assert_eq!(book.asset_id, "token-1");
     assert!(received
@@ -81,8 +82,8 @@ fn client_reads_clob_books_through_one_public_interface() {
     server.join().unwrap();
 }
 
-#[test]
-fn client_reads_clob_books_in_one_batch() {
+#[tokio::test]
+async fn client_reads_clob_books_in_one_batch() {
     let (clob_base_url, received, server) = serve_json(
         r#"[{"asset_id":"token-1","bids":[],"asks":[]},{"asset_id":"token-2","bids":[],"asks":[]}]"#,
     );
@@ -94,6 +95,7 @@ fn client_reads_clob_books_in_one_batch() {
 
     let books = client
         .order_books(&["token-1".into(), "token-2".into()])
+        .await
         .unwrap();
 
     assert_eq!(books.len(), 2);
@@ -104,8 +106,8 @@ fn client_reads_clob_books_in_one_batch() {
     server.join().unwrap();
 }
 
-#[test]
-fn client_reads_positions_through_one_public_interface() {
+#[tokio::test]
+async fn client_reads_positions_through_one_public_interface() {
     let (data_base_url, received, server) = serve_json(r#"[{"asset":"token-1"}]"#);
     let client = Client::new(ClientConfig {
         data_base_url,
@@ -113,7 +115,7 @@ fn client_reads_positions_through_one_public_interface() {
     })
     .unwrap();
 
-    let positions = client.current_positions("0xuser", 5).unwrap();
+    let positions = client.current_positions("0xuser", 5).await.unwrap();
 
     assert_eq!(positions[0].token_id, "token-1");
     let request = received.recv().unwrap();
@@ -123,8 +125,8 @@ fn client_reads_positions_through_one_public_interface() {
     server.join().unwrap();
 }
 
-#[test]
-fn client_lists_markets_through_one_public_interface() {
+#[tokio::test]
+async fn client_lists_markets_through_one_public_interface() {
     let (gamma_base_url, received, server) = serve_json("[]");
     let client = Client::new(ClientConfig {
         gamma_base_url,
@@ -137,6 +139,7 @@ fn client_lists_markets_through_one_public_interface() {
             limit: Some(5),
             ..MarketParams::default()
         })
+        .await
         .unwrap();
 
     assert!(markets.is_empty());
@@ -146,8 +149,8 @@ fn client_lists_markets_through_one_public_interface() {
     server.join().unwrap();
 }
 
-#[test]
-fn client_reads_clob_prices_through_one_public_interface() {
+#[tokio::test]
+async fn client_reads_clob_prices_through_one_public_interface() {
     let (clob_base_url, received, server) = serve_json(r#"{"price":"0.42"}"#);
     let client = Client::new(ClientConfig {
         clob_base_url,
@@ -155,7 +158,7 @@ fn client_reads_clob_prices_through_one_public_interface() {
     })
     .unwrap();
 
-    let price = client.price("token-1", "buy").unwrap();
+    let price = client.price("token-1", "buy").await.unwrap();
 
     assert_eq!(price, "0.42");
     let request = received.recv().unwrap();
@@ -165,8 +168,8 @@ fn client_reads_clob_prices_through_one_public_interface() {
     server.join().unwrap();
 }
 
-#[test]
-fn client_reads_trades_through_one_public_interface() {
+#[tokio::test]
+async fn client_reads_trades_through_one_public_interface() {
     let (data_base_url, received, server) = serve_json("[]");
     let client = Client::new(ClientConfig {
         data_base_url,
@@ -174,7 +177,7 @@ fn client_reads_trades_through_one_public_interface() {
     })
     .unwrap();
 
-    let trades = client.trades("0xuser", 7).unwrap();
+    let trades = client.trades("0xuser", 7).await.unwrap();
 
     assert!(trades.is_empty());
     let request = received.recv().unwrap();
@@ -184,8 +187,8 @@ fn client_reads_trades_through_one_public_interface() {
     server.join().unwrap();
 }
 
-#[test]
-fn client_reads_leaderboard_through_one_public_interface() {
+#[tokio::test]
+async fn client_reads_leaderboard_through_one_public_interface() {
     let (data_base_url, received, server) = serve_json("[]");
     let client = Client::new(ClientConfig {
         data_base_url,
@@ -193,7 +196,7 @@ fn client_reads_leaderboard_through_one_public_interface() {
     })
     .unwrap();
 
-    let rows = client.trader_leaderboard(9).unwrap();
+    let rows = client.trader_leaderboard(9).await.unwrap();
 
     assert!(rows.is_empty());
     let request = received.recv().unwrap();
@@ -202,8 +205,8 @@ fn client_reads_leaderboard_through_one_public_interface() {
     server.join().unwrap();
 }
 
-#[test]
-fn client_reports_combined_health_through_one_public_interface() {
+#[tokio::test]
+async fn client_reports_combined_health_through_one_public_interface() {
     let (gamma_base_url, gamma_request, gamma_server) = serve_json("{}");
     let (clob_base_url, clob_request, clob_server) = serve_json("{}");
     let client = Client::new(ClientConfig {
@@ -213,7 +216,7 @@ fn client_reports_combined_health_through_one_public_interface() {
     })
     .unwrap();
 
-    let health = client.health();
+    let health = client.health().await;
 
     assert_eq!(health.gamma, "ok");
     assert_eq!(health.clob, "ok");
@@ -223,8 +226,8 @@ fn client_reports_combined_health_through_one_public_interface() {
     clob_server.join().unwrap();
 }
 
-#[test]
-fn client_simulates_fills_through_one_public_interface() {
+#[tokio::test]
+async fn client_simulates_fills_through_one_public_interface() {
     let (clob_base_url, received, server) =
         serve_json(r#"{"asset_id":"token-1","asks":[{"price":"0.5","size":"10"}]}"#);
     let client = Client::new(ClientConfig {
@@ -240,6 +243,7 @@ fn client_simulates_fills_through_one_public_interface() {
             amount: "1".into(),
             limit_price: String::new(),
         })
+        .await
         .unwrap();
 
     assert!(fill.complete);

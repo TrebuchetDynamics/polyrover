@@ -32,8 +32,8 @@ fn serve_json(body: &'static str) -> (String, mpsc::Receiver<String>, thread::Jo
     (format!("http://{address}"), received, handle)
 }
 
-#[test]
-fn resolves_exact_causal_market_result_through_polyrover_clients() {
+#[tokio::test]
+async fn resolves_exact_causal_market_result_through_polyrover_clients() {
     let (gamma_url, gamma_request, gamma_server) = serve_json(
         r#"{"conditionId":"condition-1","slug":"btc-updown","closed":true,"closedTime":"2026-07-10T12:05:03Z","clobTokenIds":"[\"token-up\",\"token-down\"]","outcomePrices":["1","0"]}"#,
     );
@@ -52,6 +52,7 @@ fn resolves_exact_causal_market_result_through_polyrover_clients() {
             },
             observed_at,
         )
+        .await
         .unwrap()
         .unwrap();
 
