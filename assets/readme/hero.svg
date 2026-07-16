@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">Polyrover — async Rust SDK and CLI for Polymarket</title>
+  <desc id="desc">Polyrover connects public Gamma, CLOB, Data API, and market WebSocket sources to typed Rust data, stable JSON, and local simulation without a live trading path.</desc>
+  <defs>
+    <linearGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5B8CFF"/>
+      <stop offset="1" stop-color="#5EEAD4"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#1B2A40" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="400" rx="24" fill="#07111F"/>
+  <rect width="1200" height="400" rx="24" fill="url(#grid)" opacity="0.35"/>
+  <path d="M704 52V348" stroke="#26364F"/>
+
+  <g id="title-block" transform="translate(64 54)">
+    <text x="0" y="0" fill="#5EEAD4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700" letter-spacing="2">RUST · ASYNC · POLYMARKET</text>
+    <text x="0" y="82" fill="#F8FAFC" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="74" font-weight="800" letter-spacing="-3">polyrover</text>
+    <text x="0" y="132" fill="#CBD5E1" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="24" font-weight="500">Public market data, typed streams,</text>
+    <text x="0" y="164" fill="#CBD5E1" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="24" font-weight="500">and fill simulation—without live trading.</text>
+
+    <g transform="translate(0 214)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">
+      <rect width="160" height="38" rx="19" fill="#102442" stroke="#5B8CFF"/>
+      <text x="80" y="24" fill="#BFD0FF" text-anchor="middle">PUBLIC DEFAULT</text>
+      <rect x="172" width="132" height="38" rx="19" fill="#0C2A2C" stroke="#2C8F84"/>
+      <text x="238" y="24" fill="#9BF5E8" text-anchor="middle">TOKIO-NATIVE</text>
+      <rect x="316" width="104" height="38" rx="19" fill="#111C2E" stroke="#475569"/>
+      <text x="368" y="24" fill="#CBD5E1" text-anchor="middle">JSON · V1</text>
+    </g>
+
+    <g transform="translate(0 290)">
+      <rect width="10" height="10" rx="2" fill="#5EEAD4"/>
+      <text x="22" y="10" fill="#94A3B8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">PUBLIC BUILD: NO KEYS · NO ORDER SUBMIT</text>
+    </g>
+  </g>
+
+  <g id="async-public-path" transform="translate(754 52)">
+    <text x="0" y="0" fill="#94A3B8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700" letter-spacing="1.5">THE PUBLIC PATH</text>
+
+    <g transform="translate(0 24)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">
+      <rect width="118" height="44" rx="8" fill="#101D31" stroke="#304461"/>
+      <text x="59" y="27" fill="#E2E8F0" text-anchor="middle">GAMMA</text>
+      <rect x="130" width="118" height="44" rx="8" fill="#101D31" stroke="#304461"/>
+      <text x="189" y="27" fill="#E2E8F0" text-anchor="middle">CLOB</text>
+      <rect x="260" width="118" height="44" rx="8" fill="#101D31" stroke="#304461"/>
+      <text x="319" y="27" fill="#E2E8F0" text-anchor="middle">DATA API</text>
+      <rect y="58" width="378" height="44" rx="8" fill="#101D31" stroke="#304461"/>
+      <text x="189" y="85" fill="#E2E8F0" text-anchor="middle">MARKET WEBSOCKET</text>
+    </g>
+
+    <path d="M59 134V152M189 134V152M319 134V152M59 152H319M189 152V172" fill="none" stroke="url(#rail)" stroke-width="2"/>
+    <circle cx="189" cy="152" r="4" fill="#5EEAD4"/>
+
+    <g transform="translate(0 172)">
+      <rect width="378" height="66" rx="12" fill="#102442" stroke="#5B8CFF" stroke-width="1.5"/>
+      <text x="20" y="27" fill="#8EADFF" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">Client + MarketWsClient</text>
+      <text x="20" y="49" fill="#F8FAFC" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700">request.await?</text>
+      <circle cx="342" cy="33" r="9" fill="#5EEAD4"/>
+      <path d="M338 33l3 3 6-7" fill="none" stroke="#07111F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <path d="M189 238V260" stroke="url(#rail)" stroke-width="2"/>
+    <g transform="translate(0 260)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">
+      <rect width="112" height="42" rx="8" fill="#0C2A2C" stroke="#2C8F84"/>
+      <text x="56" y="26" fill="#9BF5E8" text-anchor="middle">TYPED DTOs</text>
+      <rect x="124" width="112" height="42" rx="8" fill="#0C2A2C" stroke="#2C8F84"/>
+      <text x="180" y="26" fill="#9BF5E8" text-anchor="middle">JSON V1</text>
+      <rect x="248" width="130" height="42" rx="8" fill="#0C2A2C" stroke="#2C8F84"/>
+      <text x="313" y="26" fill="#9BF5E8" text-anchor="middle">SIMULATION</text>
+    </g>
+  </g>
+</svg>
