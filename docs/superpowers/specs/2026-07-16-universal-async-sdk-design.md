@@ -1,7 +1,7 @@
 # Universal Async Polyrover SDK Design
 
 Date: 2026-07-16
-Status: Approved design
+Status: Proposed
 
 ## Summary
 
@@ -65,6 +65,12 @@ full → execution + bridge
 All existing network operations use async `reqwest` or
 `tokio-tungstenite`. Pure calculations and DTO transformations remain
 synchronous. No blocking compatibility layer remains.
+
+Universal coverage means core market and outcome identities support arbitrary
+Polymarket markets. Core types contain no six-asset, three-horizon, crypto, or
+Up/Down assumptions. Crypto Up/Down window discovery remains an optional,
+specialized helper built on those generic identities. Bot strategy, order
+sizing, and portfolio policy remain outside the SDK.
 
 Polyrover owns its universal async SDK decision in an ADR inside the Polyrover
 repository. MegaBot's root `CONTEXT.md` and `AGENTS.md` state only that
@@ -170,7 +176,10 @@ async caller
 A WebSocket read internally selects between socket input and heartbeat or
 reconnect deadlines. Heartbeats and silent-peer detection therefore do not
 depend on incoming market traffic. Reconnect preserves subscriptions, tracker
-state, deduplication state, ordering, and counters.
+state, deduplication state, and counters. Received events retain their
+processing order, but reconnect cannot reconstruct events missed while
+disconnected. Missing trades remain an explicit coverage gap; REST
+reconciliation restores current book state only.
 
 ### rust-crypto-data
 
@@ -340,6 +349,10 @@ are not modified.
 
 - All existing network operations are native async and preserve their method
   names and observable semantics.
+- Core APIs represent arbitrary Polymarket markets and outcomes without
+  six-asset, three-horizon, crypto, or Up/Down assumptions; crypto Up/Down
+  resolution remains a specialized helper.
+- Bot strategy, sizing, and portfolio policy remain outside Polyrover.
 - Blocking `reqwest` and synchronous Tungstenite transport are absent.
 - No public blocking facade or wrapper remains.
 - Pure DTO, parsing, simulation, signing-helper, and book-math APIs remain
