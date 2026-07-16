@@ -1,7 +1,7 @@
 # Universal Async Polyrover SDK Design
 
 Date: 2026-07-16
-Status: Proposed
+Status: Approved
 
 ## Summary
 
