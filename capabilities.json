@@ -1,0 +1,3233 @@
+{
+  "schemaVersion": 1,
+  "taxonomyVersion": "1.0.0",
+  "sdk": "polyrover",
+  "reference": {
+    "project": "polymarket-cli",
+    "commit": "9b18b5f"
+  },
+  "capabilities": [
+    {
+      "id": "approve.check",
+      "tier": "execution",
+      "service": "approve",
+      "operation": "read",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "approve",
+        "check"
+      ],
+      "extension": false,
+      "summary": "Approve check.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "approve.set",
+      "tier": "execution",
+      "service": "approve",
+      "operation": "submit",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "approve",
+        "set"
+      ],
+      "extension": false,
+      "summary": "Approve set.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "auth.l1.headers.create",
+      "tier": "authenticated",
+      "service": "auth",
+      "operation": "create",
+      "transport": "local",
+      "auth": [
+        "l1"
+      ],
+      "signing": "wallet",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Auth l1 headers create.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "auth.l2.headers.create",
+      "tier": "authenticated",
+      "service": "auth",
+      "operation": "create",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Auth l2 headers create.",
+      "status": "implemented",
+      "api": [
+        "auth::build_l2_headers"
+      ],
+      "tests": [
+        "src/auth.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "auth.siwe.session.create",
+      "tier": "authenticated",
+      "service": "auth",
+      "operation": "create",
+      "transport": "local",
+      "auth": [
+        "siwe"
+      ],
+      "signing": "wallet",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Auth siwe session create.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "bridge.assets.read",
+      "tier": "bridge",
+      "service": "bridge",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "bridge",
+        "supported-assets"
+      ],
+      "extension": false,
+      "summary": "Bridge assets read.",
+      "status": "dtoOnly",
+      "api": [
+        "bridge::SupportedAssetsResponse"
+      ],
+      "tests": [
+        "src/bridge.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "bridge.depositAddress.create",
+      "tier": "bridge",
+      "service": "bridge",
+      "operation": "create",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "bridge",
+        "deposit"
+      ],
+      "extension": false,
+      "summary": "Bridge deposit address create.",
+      "status": "dtoOnly",
+      "api": [
+        "bridge::CreateDepositAddressResponse"
+      ],
+      "tests": [
+        "src/bridge.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "bridge.quote.read",
+      "tier": "bridge",
+      "service": "bridge",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Bridge quote read.",
+      "status": "dtoOnly",
+      "api": [
+        "bridge::QuoteRequest",
+        "bridge::QuoteResponse"
+      ],
+      "tests": [
+        "src/bridge.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "bridge.status.read",
+      "tier": "bridge",
+      "service": "bridge",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "bridge",
+        "status"
+      ],
+      "extension": false,
+      "summary": "Bridge status read.",
+      "status": "dtoOnly",
+      "api": [
+        "bridge::DepositStatusResponse"
+      ],
+      "tests": [
+        "src/bridge.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "bridge.withdraw.simulate",
+      "tier": "bridge",
+      "service": "bridge",
+      "operation": "simulate",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Bridge withdraw simulate.",
+      "status": "implemented",
+      "api": [
+        "bridge::build_withdraw_dry_run"
+      ],
+      "tests": [
+        "src/bridge.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "bridge.withdraw.submit",
+      "tier": "bridge",
+      "service": "bridge",
+      "operation": "submit",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Bridge withdraw submit.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "chainlink.price.read",
+      "tier": "public",
+      "service": "chainlink",
+      "operation": "read",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Chainlink price read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.accountStatus.read",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "account-status"
+      ],
+      "extension": false,
+      "summary": "Clob account status read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.apiKey.createOrDerive",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "create",
+      "transport": "https",
+      "auth": [
+        "l1"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "create-api-key"
+      ],
+      "extension": false,
+      "summary": "Clob api key create or derive.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.apiKey.delete",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "update",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "delete-api-key"
+      ],
+      "extension": false,
+      "summary": "Clob api key delete.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.apiKeys.list",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "api-keys"
+      ],
+      "extension": false,
+      "summary": "Clob api keys list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.balance.read",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "balance"
+      ],
+      "extension": false,
+      "summary": "Clob balance read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.balance.update",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "update",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "update-balance"
+      ],
+      "extension": false,
+      "summary": "Clob balance update.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.book.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "book"
+      ],
+      "extension": false,
+      "summary": "Clob book read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::order_book"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.books.batchRead",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "books"
+      ],
+      "extension": false,
+      "summary": "Clob books batch read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::order_books"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.builderFeeKey.create",
+      "tier": "public",
+      "service": "clob",
+      "operation": "create",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Clob builder fee key create.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.builderFeeKey.revoke",
+      "tier": "public",
+      "service": "clob",
+      "operation": "update",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Clob builder fee key revoke.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.builderFeeKeys.list",
+      "tier": "public",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Clob builder fee keys list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.builderTrades.list",
+      "tier": "public",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Clob builder trades list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.currentRewards.list",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "current-rewards"
+      ],
+      "extension": false,
+      "summary": "Clob current rewards list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.earnings.read",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "earnings"
+      ],
+      "extension": false,
+      "summary": "Clob earnings read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.earningsByMarket.list",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "earnings-markets"
+      ],
+      "extension": false,
+      "summary": "Clob earnings by market list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.feeRate.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "fee-rate"
+      ],
+      "extension": false,
+      "summary": "Clob fee rate read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.geoblock.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "geoblock"
+      ],
+      "extension": false,
+      "summary": "Clob geoblock read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.health.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "ok"
+      ],
+      "extension": false,
+      "summary": "Clob health read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::health"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.lastTrade.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "last-trade"
+      ],
+      "extension": false,
+      "summary": "Clob last trade read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.lastTrades.batchRead",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "last-trades"
+      ],
+      "extension": false,
+      "summary": "Clob last trades batch read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.market.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "market"
+      ],
+      "extension": false,
+      "summary": "Clob market read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::market"
+      ],
+      "tests": [
+        "src/clob.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.marketOutcome.resolve",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Clob market outcome resolve.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::market_outcome"
+      ],
+      "tests": [
+        "src/clob.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.marketReward.read",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "market-reward"
+      ],
+      "extension": false,
+      "summary": "Clob market reward read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.markets.list",
+      "tier": "public",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "markets"
+      ],
+      "extension": false,
+      "summary": "Clob markets list.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::markets"
+      ],
+      "tests": [
+        "src/clob.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.midpoint.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "midpoint"
+      ],
+      "extension": false,
+      "summary": "Clob midpoint read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::midpoint"
+      ],
+      "tests": [
+        "src/clob.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.midpoints.batchRead",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "midpoints"
+      ],
+      "extension": false,
+      "summary": "Clob midpoints batch read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.negRisk.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "neg-risk"
+      ],
+      "extension": false,
+      "summary": "Clob neg risk read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::neg_risk"
+      ],
+      "tests": [
+        "src/clob.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.notifications.delete",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "update",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "delete-notifications"
+      ],
+      "extension": false,
+      "summary": "Clob notifications delete.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.notifications.list",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "notifications"
+      ],
+      "extension": false,
+      "summary": "Clob notifications list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.order.cancel",
+      "tier": "execution",
+      "service": "clob",
+      "operation": "cancel",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "cancel"
+      ],
+      "extension": false,
+      "summary": "Clob order cancel.",
+      "status": "dtoOnly",
+      "api": [
+        "clob_orders::CancelOrdersResponse"
+      ],
+      "tests": [
+        "src/clob_orders.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "clob.order.read",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "order"
+      ],
+      "extension": false,
+      "summary": "Clob order read.",
+      "status": "dtoOnly",
+      "api": [
+        "clob_orders::OrderRecord"
+      ],
+      "tests": [
+        "src/clob_orders.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "clob.orderScoring.read",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "order-scoring"
+      ],
+      "extension": false,
+      "summary": "Clob order scoring read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.orders.all.cancel",
+      "tier": "execution",
+      "service": "clob",
+      "operation": "cancel",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "cancel-all"
+      ],
+      "extension": false,
+      "summary": "Clob orders all cancel.",
+      "status": "dtoOnly",
+      "api": [
+        "clob_orders::CancelOrdersResponse"
+      ],
+      "tests": [
+        "src/clob_orders.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "clob.orders.batch.cancel",
+      "tier": "execution",
+      "service": "clob",
+      "operation": "cancel",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "cancel-orders"
+      ],
+      "extension": false,
+      "summary": "Clob orders batch cancel.",
+      "status": "dtoOnly",
+      "api": [
+        "clob_orders::CancelOrdersResponse"
+      ],
+      "tests": [
+        "src/clob_orders.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "clob.orders.batch.submit",
+      "tier": "execution",
+      "service": "clob",
+      "operation": "submit",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "post-orders"
+      ],
+      "extension": false,
+      "summary": "Clob orders batch submit.",
+      "status": "dtoOnly",
+      "api": [
+        "clob_orders::BatchOrderResponse"
+      ],
+      "tests": [
+        "src/clob_orders.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "clob.orders.limit.submit",
+      "tier": "execution",
+      "service": "clob",
+      "operation": "submit",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "create-order"
+      ],
+      "extension": false,
+      "summary": "Clob orders limit submit.",
+      "status": "dtoOnly",
+      "api": [
+        "clob_orders::CreateOrderParams"
+      ],
+      "tests": [
+        "src/clob_orders.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "clob.orders.list",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "orders"
+      ],
+      "extension": false,
+      "summary": "Clob orders list.",
+      "status": "dtoOnly",
+      "api": [
+        "clob_orders::OrderRecord"
+      ],
+      "tests": [
+        "src/clob_orders.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "clob.orders.market.cancel",
+      "tier": "execution",
+      "service": "clob",
+      "operation": "cancel",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "cancel-market"
+      ],
+      "extension": false,
+      "summary": "Clob orders market cancel.",
+      "status": "dtoOnly",
+      "api": [
+        "clob_orders::CancelMarketParams"
+      ],
+      "tests": [
+        "src/clob_orders.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "clob.orders.market.submit",
+      "tier": "execution",
+      "service": "clob",
+      "operation": "submit",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "clob",
+        "market-order"
+      ],
+      "extension": false,
+      "summary": "Clob orders market submit.",
+      "status": "dtoOnly",
+      "api": [
+        "clob_orders::MarketOrderParams"
+      ],
+      "tests": [
+        "src/clob_orders.rs"
+      ],
+      "guard": null,
+      "notes": "Typed models exist, but no network operation is implemented."
+    },
+    {
+      "id": "clob.ordersScoring.read",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "orders-scoring"
+      ],
+      "extension": false,
+      "summary": "Clob orders scoring read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.price.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "price"
+      ],
+      "extension": false,
+      "summary": "Clob price read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::price"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.priceHistory.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "price-history"
+      ],
+      "extension": false,
+      "summary": "Clob price history read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.prices.batchRead",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "batch-prices"
+      ],
+      "extension": false,
+      "summary": "Clob prices batch read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.publicTrades.list",
+      "tier": "public",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Clob public trades list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.rewardPercentages.read",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "reward-percentages"
+      ],
+      "extension": false,
+      "summary": "Clob reward percentages read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.rewards.list",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "rewards"
+      ],
+      "extension": false,
+      "summary": "Clob rewards list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.samplingMarkets.list",
+      "tier": "public",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "sampling-markets"
+      ],
+      "extension": false,
+      "summary": "Clob sampling markets list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.simplifiedMarkets.list",
+      "tier": "public",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "simplified-markets"
+      ],
+      "extension": false,
+      "summary": "Clob simplified markets list.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::simplified_markets"
+      ],
+      "tests": [
+        "src/clob.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.simplifiedSamplingMarkets.list",
+      "tier": "public",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "sampling-simp-markets"
+      ],
+      "extension": false,
+      "summary": "Clob simplified sampling markets list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.spread.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "spread"
+      ],
+      "extension": false,
+      "summary": "Clob spread read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::spread"
+      ],
+      "tests": [
+        "src/clob.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.spreads.batchRead",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "spreads"
+      ],
+      "extension": false,
+      "summary": "Clob spreads batch read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "clob.tickSize.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "tick-size"
+      ],
+      "extension": false,
+      "summary": "Clob tick size read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::tick_size"
+      ],
+      "tests": [
+        "src/clob.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.time.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "time"
+      ],
+      "extension": false,
+      "summary": "Clob time read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::server_time"
+      ],
+      "tests": [
+        "src/clob.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "clob.trades.list",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "clob",
+        "trades"
+      ],
+      "extension": false,
+      "summary": "Clob trades list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "comments.byUser.list",
+      "tier": "public",
+      "service": "comments",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "comments",
+        "by-user"
+      ],
+      "extension": false,
+      "summary": "Comments by user list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "comments.get",
+      "tier": "public",
+      "service": "comments",
+      "operation": "get",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "comments",
+        "get"
+      ],
+      "extension": false,
+      "summary": "Comments get.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "comments.list",
+      "tier": "public",
+      "service": "comments",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "comments",
+        "list"
+      ],
+      "extension": false,
+      "summary": "Comments list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "ctf.collectionId.derive",
+      "tier": "execution",
+      "service": "ctf",
+      "operation": "derive",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "ctf",
+        "collection-id"
+      ],
+      "extension": false,
+      "summary": "Ctf collection id derive.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "ctf.conditionId.derive",
+      "tier": "execution",
+      "service": "ctf",
+      "operation": "derive",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "ctf",
+        "condition-id"
+      ],
+      "extension": false,
+      "summary": "Ctf condition id derive.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "ctf.merge",
+      "tier": "execution",
+      "service": "ctf",
+      "operation": "submit",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "ctf",
+        "merge"
+      ],
+      "extension": false,
+      "summary": "Ctf merge.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "ctf.positionId.derive",
+      "tier": "execution",
+      "service": "ctf",
+      "operation": "derive",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "ctf",
+        "position-id"
+      ],
+      "extension": false,
+      "summary": "Ctf position id derive.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "ctf.redeem",
+      "tier": "execution",
+      "service": "ctf",
+      "operation": "submit",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "ctf",
+        "redeem"
+      ],
+      "extension": false,
+      "summary": "Ctf redeem.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "ctf.redeemNegRisk",
+      "tier": "execution",
+      "service": "ctf",
+      "operation": "submit",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "ctf",
+        "redeem-neg-risk"
+      ],
+      "extension": false,
+      "summary": "Ctf redeem neg risk.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "ctf.split",
+      "tier": "execution",
+      "service": "ctf",
+      "operation": "submit",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": [
+        "ctf",
+        "split"
+      ],
+      "extension": false,
+      "summary": "Ctf split.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "data.activity.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "activity"
+      ],
+      "extension": false,
+      "summary": "Data activity read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::activity"
+      ],
+      "tests": [
+        "src/data.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.builderLeaderboard.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "builder-leaderboard"
+      ],
+      "extension": false,
+      "summary": "Data builder leaderboard read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "data.builderVolume.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "builder-volume"
+      ],
+      "extension": false,
+      "summary": "Data builder volume read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "data.closedPositions.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "closed-positions"
+      ],
+      "extension": false,
+      "summary": "Data closed positions read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::closed_positions"
+      ],
+      "tests": [
+        "src/data.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.holders.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "holders"
+      ],
+      "extension": false,
+      "summary": "Data holders read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::top_holders"
+      ],
+      "tests": [
+        "src/data.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.leaderboard.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "leaderboard"
+      ],
+      "extension": false,
+      "summary": "Data leaderboard read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::trader_leaderboard"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.marketTrades.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Data market trades read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::market_trades"
+      ],
+      "tests": [
+        "src/data.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.marketsTraded.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "traded"
+      ],
+      "extension": false,
+      "summary": "Data markets traded read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::markets_traded"
+      ],
+      "tests": [
+        "src/data.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.openInterest.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "open-interest"
+      ],
+      "extension": false,
+      "summary": "Data open interest read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::open_interest"
+      ],
+      "tests": [
+        "src/data.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.positions.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "positions"
+      ],
+      "extension": false,
+      "summary": "Data positions read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::current_positions"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.smartWalletTrades.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Data smart wallet trades read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "data.trades.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "trades"
+      ],
+      "extension": false,
+      "summary": "Data trades read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::trades"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.value.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "value"
+      ],
+      "extension": false,
+      "summary": "Data value read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::total_value"
+      ],
+      "tests": [
+        "src/data.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "data.volume.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "data",
+        "volume"
+      ],
+      "extension": false,
+      "summary": "Data volume read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::live_volume"
+      ],
+      "tests": [
+        "src/data.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "events.get",
+      "tier": "public",
+      "service": "events",
+      "operation": "get",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "events",
+        "get"
+      ],
+      "extension": false,
+      "summary": "Events get.",
+      "status": "implemented",
+      "api": [
+        "gamma::Client::event_by_id"
+      ],
+      "tests": [
+        "src/gamma.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "events.list",
+      "tier": "public",
+      "service": "events",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "events",
+        "list"
+      ],
+      "extension": false,
+      "summary": "Events list.",
+      "status": "implemented",
+      "api": [
+        "gamma::Client::events"
+      ],
+      "tests": [
+        "src/gamma.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "events.tags.list",
+      "tier": "public",
+      "service": "events",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "events",
+        "tags"
+      ],
+      "extension": false,
+      "summary": "Events tags list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "intel.marketFlow.read",
+      "tier": "public",
+      "service": "intel",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Intel market flow read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "intel.wallet.alerts",
+      "tier": "public",
+      "service": "intel",
+      "operation": "read",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Intel wallet alerts.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "intel.wallet.dossier",
+      "tier": "public",
+      "service": "intel",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Intel wallet dossier.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "intel.wallet.score",
+      "tier": "public",
+      "service": "intel",
+      "operation": "read",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Intel wallet score.",
+      "status": "implemented",
+      "api": [
+        "intel::score_wallet"
+      ],
+      "tests": [
+        "src/intel.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "market.discover",
+      "tier": "public",
+      "service": "market",
+      "operation": "search",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Market discover.",
+      "status": "implemented",
+      "api": [
+        "market_resolver::discover_window_markets"
+      ],
+      "tests": [
+        "src/market_resolver.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "market.resolve",
+      "tier": "public",
+      "service": "market",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Market resolve.",
+      "status": "implemented",
+      "api": [
+        "market_results::Resolver::resolve"
+      ],
+      "tests": [
+        "tests/market_results.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "marketDetail.bundle.read",
+      "tier": "public",
+      "service": "marketDetail",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Market detail bundle read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "markets.get",
+      "tier": "public",
+      "service": "markets",
+      "operation": "get",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "markets",
+        "get"
+      ],
+      "extension": false,
+      "summary": "Markets get.",
+      "status": "implemented",
+      "api": [
+        "gamma::Client::market_by_id",
+        "gamma::Client::market_by_slug"
+      ],
+      "tests": [
+        "src/gamma.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "markets.list",
+      "tier": "public",
+      "service": "markets",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "markets",
+        "list"
+      ],
+      "extension": false,
+      "summary": "Markets list.",
+      "status": "implemented",
+      "api": [
+        "gamma::Client::markets"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "markets.search",
+      "tier": "public",
+      "service": "markets",
+      "operation": "search",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "markets",
+        "search"
+      ],
+      "extension": false,
+      "summary": "Markets search.",
+      "status": "implemented",
+      "api": [
+        "gamma::Client::search"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "markets.tags.list",
+      "tier": "public",
+      "service": "markets",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "markets",
+        "tags"
+      ],
+      "extension": false,
+      "summary": "Markets tags list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "opportunities.scan",
+      "tier": "public",
+      "service": "opportunities",
+      "operation": "search",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Opportunities scan.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "orderfills.read",
+      "tier": "public",
+      "service": "orderfills",
+      "operation": "read",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Orderfills read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "paper.order.cancel",
+      "tier": "public",
+      "service": "paper",
+      "operation": "cancel",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Paper order cancel.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "paper.order.submit",
+      "tier": "public",
+      "service": "paper",
+      "operation": "submit",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Paper order submit.",
+      "status": "implemented",
+      "api": [
+        "paper::State::buy",
+        "paper::State::sell"
+      ],
+      "tests": [
+        "src/paper.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "profiles.get",
+      "tier": "public",
+      "service": "profiles",
+      "operation": "get",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "profiles",
+        "get"
+      ],
+      "extension": false,
+      "summary": "Profiles get.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "relayer.transaction.read",
+      "tier": "execution",
+      "service": "relayer",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "siwe"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Relayer transaction read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "relayer.transaction.submit",
+      "tier": "execution",
+      "service": "relayer",
+      "operation": "submit",
+      "transport": "https",
+      "auth": [
+        "siwe"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Relayer transaction submit.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "relayer.wallet.deploy",
+      "tier": "execution",
+      "service": "relayer",
+      "operation": "submit",
+      "transport": "https",
+      "auth": [
+        "siwe"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Relayer wallet deploy.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "relayer.wallet.status.read",
+      "tier": "execution",
+      "service": "relayer",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "siwe"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Relayer wallet status read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "rfq.submit",
+      "tier": "execution",
+      "service": "rfq",
+      "operation": "submit",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "wallet",
+      "mutates": true,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Rfq submit.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "series.get",
+      "tier": "public",
+      "service": "series",
+      "operation": "get",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "series",
+        "get"
+      ],
+      "extension": false,
+      "summary": "Series get.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "series.list",
+      "tier": "public",
+      "service": "series",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "series",
+        "list"
+      ],
+      "extension": false,
+      "summary": "Series list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "settlement.readiness.check",
+      "tier": "wallet",
+      "service": "settlement",
+      "operation": "read",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Settlement readiness check.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "settlement.redeem.plan",
+      "tier": "wallet",
+      "service": "settlement",
+      "operation": "create",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Settlement redeem plan.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "settlement.redeemables.read",
+      "tier": "public",
+      "service": "settlement",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Settlement redeemables read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "simulation.book.execute",
+      "tier": "public",
+      "service": "simulation",
+      "operation": "simulate",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Simulation book execute.",
+      "status": "implemented",
+      "api": [
+        "simulation::simulate_book"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "sports.list",
+      "tier": "public",
+      "service": "sports",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "sports",
+        "list"
+      ],
+      "extension": false,
+      "summary": "Sports list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "sports.marketTypes.list",
+      "tier": "public",
+      "service": "sports",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "sports",
+        "market-types"
+      ],
+      "extension": false,
+      "summary": "Sports market types list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "sports.teams.list",
+      "tier": "public",
+      "service": "sports",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "sports",
+        "teams"
+      ],
+      "extension": false,
+      "summary": "Sports teams list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "stream.market.subscribe",
+      "tier": "public",
+      "service": "stream",
+      "operation": "stream",
+      "transport": "wss",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Stream market subscribe.",
+      "status": "implemented",
+      "api": [
+        "stream_client::MarketWsClient::subscribe"
+      ],
+      "tests": [
+        "src/stream_client.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "stream.user.subscribe",
+      "tier": "authenticated",
+      "service": "stream",
+      "operation": "stream",
+      "transport": "wss",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Stream user subscribe.",
+      "status": "implemented",
+      "api": [
+        "user_stream::UserWsClient::subscribe_user"
+      ],
+      "tests": [
+        "src/user_stream.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "tags.get",
+      "tier": "public",
+      "service": "tags",
+      "operation": "get",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "tags",
+        "get"
+      ],
+      "extension": false,
+      "summary": "Tags get.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "tags.list",
+      "tier": "public",
+      "service": "tags",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "tags",
+        "list"
+      ],
+      "extension": false,
+      "summary": "Tags list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "tags.related.list",
+      "tier": "public",
+      "service": "tags",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "tags",
+        "related"
+      ],
+      "extension": false,
+      "summary": "Tags related list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "tags.relatedTags.list",
+      "tier": "public",
+      "service": "tags",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "tags",
+        "related-tags"
+      ],
+      "extension": false,
+      "summary": "Tags related tags list.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "wallet.address.read",
+      "tier": "wallet",
+      "service": "wallet",
+      "operation": "read",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": [
+        "wallet",
+        "address"
+      ],
+      "extension": false,
+      "summary": "Wallet address read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "wallet.batch.sign",
+      "tier": "wallet",
+      "service": "wallet",
+      "operation": "sign",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "wallet",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Wallet batch sign.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    },
+    {
+      "id": "wallet.deposit.derive",
+      "tier": "wallet",
+      "service": "wallet",
+      "operation": "derive",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Wallet deposit derive.",
+      "status": "implemented",
+      "api": [
+        "wallet::derive_deposit_wallet"
+      ],
+      "tests": [
+        "src/wallet.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "wallet.proxy.derive",
+      "tier": "wallet",
+      "service": "wallet",
+      "operation": "derive",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Wallet proxy derive.",
+      "status": "implemented",
+      "api": [
+        "wallet::derive_proxy_wallet"
+      ],
+      "tests": [
+        "src/wallet.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "wallet.readiness.check",
+      "tier": "wallet",
+      "service": "wallet",
+      "operation": "read",
+      "transport": "rpc",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Wallet readiness check.",
+      "status": "implemented",
+      "api": [
+        "wallet::readiness"
+      ],
+      "tests": [
+        "src/wallet.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "wallet.safe.derive",
+      "tier": "wallet",
+      "service": "wallet",
+      "operation": "derive",
+      "transport": "local",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Wallet safe derive.",
+      "status": "implemented",
+      "api": [
+        "wallet::derive_safe_wallet"
+      ],
+      "tests": [
+        "src/wallet.rs"
+      ],
+      "guard": null,
+      "notes": null
+    },
+    {
+      "id": "web.cryptoMarkets.read",
+      "tier": "public",
+      "service": "web",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Web crypto markets read.",
+      "status": "planned",
+      "api": [],
+      "tests": [],
+      "guard": null,
+      "notes": "No callable Polyrover operation is implemented."
+    }
+  ]
+}

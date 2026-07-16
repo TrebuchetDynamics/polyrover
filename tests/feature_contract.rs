@@ -1,32 +1,19 @@
-use polyrover::capabilities;
+use polyrover::capabilities::CapabilityCatalog;
 
-fn ids() -> Vec<String> {
-    capabilities::all().into_iter().map(|cap| cap.id).collect()
+fn ids() -> Vec<&'static str> {
+    CapabilityCatalog::all()
+        .iter()
+        .map(|capability| capability.id)
+        .collect()
 }
 
 #[test]
-fn reporting_matches_compiled_features() {
+fn catalog_reports_source_capabilities_independently_of_compiled_features() {
     let ids = ids();
-    assert_eq!(
-        ids.contains(&"gamma.markets".into()),
-        cfg!(feature = "public")
-    );
-    assert_eq!(
-        ids.contains(&"websocket.user".into()),
-        cfg!(feature = "authenticated")
-    );
-    assert_eq!(
-        ids.contains(&"relayer.deposit_wallet".into()),
-        cfg!(feature = "wallet")
-    );
-    assert_eq!(
-        ids.contains(&"clob.trading".into()),
-        cfg!(feature = "execution")
-    );
-    assert_eq!(
-        ids.contains(&"bridge.funding".into()),
-        cfg!(feature = "bridge")
-    );
+    assert!(ids.contains(&"data.positions.read"));
+    assert!(ids.contains(&"stream.user.subscribe"));
+    assert!(ids.contains(&"clob.orders.limit.submit"));
+    assert!(ids.contains(&"bridge.assets.read"));
 }
 
 #[test]
