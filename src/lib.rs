@@ -1,4 +1,4 @@
-//! Read-only Polymarket SDK and CLI.
+//! Universal async Polymarket SDK and CLI with a safe public-data default.
 //!
 //! HTTP clients: [`gamma`] (market/event discovery), [`clob`] (order books,
 //! prices), [`data`] (positions, trades, activity), unified behind

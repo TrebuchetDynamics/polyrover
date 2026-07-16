@@ -19,11 +19,11 @@ Source: `../polygolem` (Go 1.25 module `github.com/TrebuchetDynamics/polygolem`)
 13. Add offline wallet address derivation/readiness helpers. ✅
 14. Add typed public market events, including market lifecycle events. ✅
 15. Expand full async WebSocket callback/reconnect parity. ✅ (adapted)
-    Reconnect parity shipped: in-place reconnect preserves stream stats,
-    dedup, and tracked snapshots, records the reconnect, and resubscribes
+    Native async reconnect parity shipped: in-place reconnect preserves stream
+    stats, dedup, and tracked snapshots, records the reconnect, and resubscribes
     only when assets are tracked (`src/stream_client.rs`). The Go
-    callback/background-loop layer is intentionally not ported — the
-    synchronous pull-based `MarketWsClient` API is the parity surface.
+    callback/background-loop layer is intentionally not ported — the async,
+    pull-based `MarketWsClient` API is the parity surface.
 16. Only after parity tests: authenticated CLOB reads.
 17. Last, with explicit owner approval: signing, wallet, relayer, bridge, and live order paths.
 
@@ -50,6 +50,16 @@ Source: `../polygolem` (Go 1.25 module `github.com/TrebuchetDynamics/polygolem`)
 - `src/wallet.rs`: offline wallet readiness and deterministic proxy/safe/deposit-wallet address derivation helpers.
 - `src/stream.rs`: typed decoding for book, price, trade, tick, top-of-book, new-market, and resolved-market events.
 
+## Universal coverage boundary
+
+Polyrover is a universal standalone Rust SDK with layered Cargo features and a
+safe `public` default. Existing auth, user-stream, wallet, execution DTO, and
+bridge DTO behavior remains available behind explicit features. The versioned
+coverage source is `docs/endpoint-capability-matrix.md`.
+
 ## Deliberately not ported yet
 
-Live signing, wallet onboarding, relayer, bridge, order placement/cancel, private-key handling, and credential export remain excluded because they can move funds or expose secrets.
+Live signing, wallet onboarding, relayer, bridge execution, order
+placement/cancel, private-key handling, and credential export remain excluded
+because they can move funds or expose secrets. Each requires a separately
+approved safety design; they are not part of the async migration.

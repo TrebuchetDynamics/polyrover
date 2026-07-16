@@ -1,17 +1,19 @@
 # polyrover
 
-**The safer Polymarket CLI for research, agents, and automation.**
+**The async Rust SDK and safer CLI for Polymarket.**
 
-`polyrover` is a Rust command-line tool and library for exploring Polymarket data without putting a wallet in the blast radius. It speaks Gamma, CLOB, public Data APIs, analytics, local simulation, and stream foundations — but it does not place live orders.
+`polyrover` is a universal, async-only Rust interface to Polymarket with public data as its safe default. It covers Gamma, public CLOB and Data APIs, analytics, local simulation, public and authenticated stream foundations, wallet helpers, and typed execution/bridge models.
 
-If the official [`polymarket-cli`](https://github.com/Polymarket/polymarket-cli) is a trading terminal, polyrover is the scout you send ahead first.
+Current execution and bridge surfaces are DTO-only or guarded. Polyrover does not submit or cancel live orders, sign with private keys, invoke relayers, or execute bridge transfers.
 
 ## Why use polyrover?
 
 - **Read-only by default** — browse markets, inspect books, fetch analytics, and simulate fills without configuring a private key.
 - **Agent-friendly JSON** — responses use the same `{ ok, version, data | error, meta }` shape for scripts and LLM tools.
 - **Built for pre-trade research** — search markets, check CLOB books/prices, inspect wallet analytics, estimate slippage, and run local paper fills.
-- **No accidental live trading path** — order, bridge, auth, and wallet surfaces are modeled carefully, but live signing, private-key import/storage, relayers, and order submission are deliberately excluded for now.
+- **Explicit capability packaging** — `public` is the default; authenticated, wallet, execution-model, and bridge-model surfaces require explicit Cargo features.
+- **Native async I/O** — network clients use Tokio-compatible HTTP and WebSocket transports without a blocking facade.
+- **No accidental live trading path** — live signing, private-key import/storage, relayers, bridge execution, and order submission remain excluded.
 - **Simple commands** — no shell wizard needed before your first query.
 
 ## polyrover vs. `polymarket-cli`
@@ -43,6 +45,25 @@ If the official [`polymarket-cli`](https://github.com/Polymarket/polymarket-cli)
 - Support: `auth`, `wallet`, `capabilities`, `config`, `error`, `jsonx`,
   `output`, `transport`.
 
+Core market and outcome identities are generic. Crypto Up/Down window discovery
+is a specialized helper; strategy, sizing, and portfolio policy stay outside
+the SDK.
+
+### Cargo features
+
+```toml
+[dependencies]
+polyrover = { version = "0.1", default-features = false, features = ["public"] }
+```
+
+- `public` (default): Gamma, public CLOB/Data reads, market streams, and resolution.
+- `authenticated`: `public` plus L2 auth helpers and user streams.
+- `wallet`: current pure address/readiness helpers.
+- `execution`: `authenticated` + `wallet`, currently DTOs only.
+- `bridge`: currently DTOs and unsupported-operation guards only.
+- `full`: all supported capabilities.
+
+Cargo features control compilation and dependency exposure, not runtime authority.
 Each module carries a `//!` doc; `cargo doc --open` renders the full map.
 
 ## Install
@@ -130,12 +151,12 @@ polyrover is intentionally conservative:
 - no relayer or bridge execution;
 - no wallet setup wizard that can silently move you toward trading.
 
-The project includes typed DTOs, redacted auth helpers, dry-run bridge/order surfaces, wallet readiness helpers, and stream foundations so research systems can model Polymarket correctly without receiving permission to spend funds.
+The project includes typed DTOs, redacted auth helpers, dry-run bridge/order surfaces, wallet readiness helpers, and stream foundations. Network APIs are async-only; pure DTO, parsing, simulation, HMAC, wallet-derivation, and book-math helpers remain synchronous.
 
 ## Current command surface
 
 ```text
-polyrover read-only Polymarket CLI
+polyrover async Polymarket CLI
 
 Commands:
   ping --json
@@ -180,7 +201,7 @@ Use polyrover if you are building:
 - pre-trade risk checks;
 - scripts that should never be able to place an order.
 
-For production trading, approvals, CTF operations, bridge execution, wallet management, or order submission, use the official `polymarket-cli` and keep the usual wallet safety discipline.
+For current production trading, approvals, CTF operations, bridge execution, wallet management, or order submission, use an execution-capable SDK such as Polygolem or the official `polymarket-cli`. Future Polyrover fund-moving capability requires a separate safety design and architecture approval.
 
 ## License
 
