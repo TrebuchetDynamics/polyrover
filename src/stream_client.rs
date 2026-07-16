@@ -256,7 +256,9 @@ impl MarketWsClient {
             return Ok(());
         }
         let subscriptions = self.subscriptions.clone();
-        self.subscribe_assets(&subscriptions).await
+        self.subscribe_assets(&subscriptions).await?;
+        tokio::task::yield_now().await;
+        Ok(())
     }
 
     pub async fn read_events(&mut self, observed_at_ms: i64) -> Result<Vec<MarketEvent>> {
@@ -634,21 +636,35 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn silent_connection_past_pong_timeout_triggers_reconnect() {
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let address = listener.local_addr().unwrap();
-        let server = thread::spawn(move || {
-            let (stream, _) = listener.accept().unwrap();
-            let mut socket = tungstenite::accept(stream).unwrap();
-            assert!(socket.read().unwrap().to_string().contains("token-1"));
-            // Stay connected but never send a frame: a half-open peer.
+        use futures_util::{SinkExt, StreamExt};
 
-            let (stream, _) = listener.accept().unwrap();
-            let mut replacement = tungstenite::accept(stream).unwrap();
-            assert!(replacement.read().unwrap().to_string().contains("token-1"));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            assert!(socket
+                .next()
+                .await
+                .unwrap()
+                .unwrap()
+                .to_string()
+                .contains("token-1"));
+
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut replacement = tokio_tungstenite::accept_async(stream).await.unwrap();
+            assert!(replacement
+                .next()
+                .await
+                .unwrap()
+                .unwrap()
+                .to_string()
+                .contains("token-1"));
             replacement
                 .send(Message::Text(
                     r#"{"event_type":"new_market","id":"market-2"}"#.into(),
                 ))
+                .await
                 .unwrap();
             drop(socket);
         });
@@ -662,18 +678,11 @@ mod tests {
         .unwrap();
         client.subscribe_assets(&["token-1".into()]).await.unwrap();
 
-        let deadline = Instant::now() + Duration::from_secs(8);
-        let mut rows = Vec::new();
-        while rows.is_empty() {
-            assert!(
-                Instant::now() < deadline,
-                "client never reconnected away from the silent connection"
-            );
-            rows = client.read_raw(1).await.unwrap();
-        }
-        assert_eq!(rows[0].event_type, "new_market");
+        let read = client.read_raw_with_status(1).await.unwrap();
+        assert!(read.reconnected);
+        assert_eq!(read.messages[0].event_type, "new_market");
         assert_eq!(client.stats().reconnects, 1);
-        server.join().unwrap();
+        server.await.unwrap();
     }
 
     #[tokio::test]
