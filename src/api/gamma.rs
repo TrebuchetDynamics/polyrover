@@ -1,6 +1,7 @@
 //! Gamma API client: market and event discovery queries.
 
 use crate::{
+    query::escape,
     transport,
     types::{Event, HealthResponse, Market, MarketPage, SearchResponse},
     Result,
@@ -235,19 +236,6 @@ impl Query {
             .join("&");
         format!("{}?{}", self.base, query)
     }
-}
-
-fn escape(value: &str) -> String {
-    let mut out = String::new();
-    for b in value.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char)
-            }
-            _ => out.push_str(&format!("%{b:02X}")),
-        }
-    }
-    out
 }
 
 #[cfg(test)]

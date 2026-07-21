@@ -3,7 +3,7 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::Deserialize;
 
-use crate::{transport, Error, Result};
+use crate::{query::escape, transport, Error, Result};
 
 pub const DEFAULT_BASE_URL: &str = "https://polymarket.com";
 
@@ -78,17 +78,4 @@ impl Client {
         }
         Ok(price)
     }
-}
-
-fn escape(value: &str) -> String {
-    let mut out = String::new();
-    for byte in value.bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(byte as char)
-            }
-            _ => out.push_str(&format!("%{byte:02X}")),
-        }
-    }
-    out
 }

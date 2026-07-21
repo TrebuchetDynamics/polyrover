@@ -92,7 +92,7 @@
         "auth::build_l2_headers"
       ],
       "tests": [
-        "src/auth.rs"
+        "src/capabilities/auth.rs"
       ],
       "guard": null,
       "notes": null
@@ -139,7 +139,7 @@
         "bridge::SupportedAssetsResponse"
       ],
       "tests": [
-        "src/bridge.rs"
+        "src/capabilities/bridge.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -166,7 +166,7 @@
         "bridge::CreateDepositAddressResponse"
       ],
       "tests": [
-        "src/bridge.rs"
+        "src/capabilities/bridge.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -191,7 +191,7 @@
         "bridge::QuoteResponse"
       ],
       "tests": [
-        "src/bridge.rs"
+        "src/capabilities/bridge.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -218,7 +218,7 @@
         "bridge::DepositStatusResponse"
       ],
       "tests": [
-        "src/bridge.rs"
+        "src/capabilities/bridge.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -242,7 +242,7 @@
         "bridge::build_withdraw_dry_run"
       ],
       "tests": [
-        "src/bridge.rs"
+        "src/capabilities/bridge.rs"
       ],
       "guard": null,
       "notes": null
@@ -769,7 +769,7 @@
         "clob::Client::market"
       ],
       "tests": [
-        "src/clob.rs"
+        "src/api/clob.rs"
       ],
       "guard": null,
       "notes": null
@@ -793,7 +793,7 @@
         "clob::Client::market_outcome"
       ],
       "tests": [
-        "src/clob.rs"
+        "src/api/clob.rs"
       ],
       "guard": null,
       "notes": null
@@ -843,7 +843,7 @@
         "clob::Client::markets"
       ],
       "tests": [
-        "src/clob.rs"
+        "src/api/clob.rs"
       ],
       "guard": null,
       "notes": null
@@ -870,7 +870,7 @@
         "clob::Client::midpoint"
       ],
       "tests": [
-        "src/clob.rs"
+        "src/api/clob.rs"
       ],
       "guard": null,
       "notes": null
@@ -920,7 +920,7 @@
         "clob::Client::neg_risk"
       ],
       "tests": [
-        "src/clob.rs"
+        "src/api/clob.rs"
       ],
       "guard": null,
       "notes": null
@@ -993,7 +993,7 @@
         "clob_orders::CancelOrdersResponse"
       ],
       "tests": [
-        "src/clob_orders.rs"
+        "src/capabilities/clob_orders.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -1020,7 +1020,7 @@
         "clob_orders::OrderRecord"
       ],
       "tests": [
-        "src/clob_orders.rs"
+        "src/capabilities/clob_orders.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -1070,7 +1070,7 @@
         "clob_orders::CancelOrdersResponse"
       ],
       "tests": [
-        "src/clob_orders.rs"
+        "src/capabilities/clob_orders.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -1097,7 +1097,7 @@
         "clob_orders::CancelOrdersResponse"
       ],
       "tests": [
-        "src/clob_orders.rs"
+        "src/capabilities/clob_orders.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -1124,7 +1124,7 @@
         "clob_orders::BatchOrderResponse"
       ],
       "tests": [
-        "src/clob_orders.rs"
+        "src/capabilities/clob_orders.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -1151,7 +1151,7 @@
         "clob_orders::CreateOrderParams"
       ],
       "tests": [
-        "src/clob_orders.rs"
+        "src/capabilities/clob_orders.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -1178,7 +1178,7 @@
         "clob_orders::OrderRecord"
       ],
       "tests": [
-        "src/clob_orders.rs"
+        "src/capabilities/clob_orders.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -1205,7 +1205,7 @@
         "clob_orders::CancelMarketParams"
       ],
       "tests": [
-        "src/clob_orders.rs"
+        "src/capabilities/clob_orders.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -1232,7 +1232,7 @@
         "clob_orders::MarketOrderParams"
       ],
       "tests": [
-        "src/clob_orders.rs"
+        "src/capabilities/clob_orders.rs"
       ],
       "guard": null,
       "notes": "Typed models exist, but no network operation is implemented."
@@ -1444,7 +1444,7 @@
         "clob::Client::simplified_markets"
       ],
       "tests": [
-        "src/clob.rs"
+        "src/api/clob.rs"
       ],
       "guard": null,
       "notes": null
@@ -1494,7 +1494,7 @@
         "clob::Client::spread"
       ],
       "tests": [
-        "src/clob.rs"
+        "src/api/clob.rs"
       ],
       "guard": null,
       "notes": null
@@ -1544,7 +1544,7 @@
         "clob::Client::tick_size"
       ],
       "tests": [
-        "src/clob.rs"
+        "src/api/clob.rs"
       ],
       "guard": null,
       "notes": null
@@ -1571,7 +1571,7 @@
         "clob::Client::server_time"
       ],
       "tests": [
-        "src/clob.rs"
+        "src/api/clob.rs"
       ],
       "guard": null,
       "notes": null
@@ -1953,7 +1953,7 @@
         "data::Client::top_holders"
       ],
       "tests": [
-        "src/data.rs"
+        "src/api/data.rs"
       ],
       "guard": null,
       "notes": null
@@ -2005,7 +2005,7 @@
         "data::Client::market_trades"
       ],
       "tests": [
-        "src/data.rs"
+        "src/api/data.rs"
       ],
       "guard": null,
       "notes": null
@@ -2032,7 +2032,7 @@
         "data::Client::markets_traded"
       ],
       "tests": [
-        "src/data.rs"
+        "src/api/data.rs"
       ],
       "guard": null,
       "notes": null
@@ -2059,7 +2059,7 @@
         "data::Client::open_interest"
       ],
       "tests": [
-        "src/data.rs"
+        "src/api/data.rs"
       ],
       "guard": null,
       "notes": null
@@ -2161,7 +2161,7 @@
         "data::Client::total_value"
       ],
       "tests": [
-        "src/data.rs"
+        "src/api/data.rs"
       ],
       "guard": null,
       "notes": null
@@ -2188,7 +2188,7 @@
         "data::Client::live_volume"
       ],
       "tests": [
-        "src/data.rs"
+        "src/api/data.rs"
       ],
       "guard": null,
       "notes": null
@@ -2215,7 +2215,7 @@
         "gamma::Client::event_by_id"
       ],
       "tests": [
-        "src/gamma.rs"
+        "src/api/gamma.rs"
       ],
       "guard": null,
       "notes": null
@@ -2242,7 +2242,7 @@
         "gamma::Client::events"
       ],
       "tests": [
-        "src/gamma.rs"
+        "src/api/gamma.rs"
       ],
       "guard": null,
       "notes": null
@@ -2349,7 +2349,7 @@
         "intel::score_wallet"
       ],
       "tests": [
-        "src/intel.rs"
+        "src/research/intel.rs"
       ],
       "guard": null,
       "notes": null
@@ -2373,7 +2373,7 @@
         "market_resolver::discover_window_markets"
       ],
       "tests": [
-        "src/market_resolver.rs"
+        "src/research/market_resolver.rs"
       ],
       "guard": null,
       "notes": null
@@ -2445,7 +2445,7 @@
         "gamma::Client::market_by_slug"
       ],
       "tests": [
-        "src/gamma.rs"
+        "src/api/gamma.rs"
       ],
       "guard": null,
       "notes": null
@@ -2608,7 +2608,7 @@
         "paper::State::sell"
       ],
       "tests": [
-        "src/paper.rs"
+        "src/research/paper.rs"
       ],
       "guard": null,
       "notes": null
@@ -2954,7 +2954,7 @@
         "stream_client::MarketWsClient::subscribe"
       ],
       "tests": [
-        "src/stream_client.rs"
+        "src/streaming/stream_client.rs"
       ],
       "guard": null,
       "notes": null
@@ -2978,7 +2978,7 @@
         "user_stream::UserWsClient::subscribe_user"
       ],
       "tests": [
-        "src/user_stream.rs"
+        "src/streaming/user_stream.rs"
       ],
       "guard": null,
       "notes": null
@@ -3137,7 +3137,7 @@
         "wallet::derive_deposit_wallet"
       ],
       "tests": [
-        "src/wallet.rs"
+        "src/capabilities/wallet.rs"
       ],
       "guard": null,
       "notes": null
@@ -3161,7 +3161,7 @@
         "wallet::derive_proxy_wallet"
       ],
       "tests": [
-        "src/wallet.rs"
+        "src/capabilities/wallet.rs"
       ],
       "guard": null,
       "notes": null
@@ -3185,7 +3185,7 @@
         "wallet::readiness"
       ],
       "tests": [
-        "src/wallet.rs"
+        "src/capabilities/wallet.rs"
       ],
       "guard": null,
       "notes": null
@@ -3209,7 +3209,7 @@
         "wallet::derive_safe_wallet"
       ],
       "tests": [
-        "src/wallet.rs"
+        "src/capabilities/wallet.rs"
       ],
       "guard": null,
       "notes": null

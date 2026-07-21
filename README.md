@@ -46,11 +46,11 @@ No wallet or private key is needed for the default public build.
 
 ## Public surface
 
-- **Gamma** — search, offset/keyset market pagination, events, and crypto-window discovery. [`src/gamma.rs`](src/gamma.rs)
-- **CLOB** — books, prices, spreads, tick sizes, market metadata, and hypothetical fill estimates. [`src/clob.rs`](src/clob.rs) · [`src/simulation.rs`](src/simulation.rs)
-- **Data API** — positions, trades, activity, holders, volume, and leaderboards. [`src/data.rs`](src/data.rs)
-- **Market WebSocket** — typed events with heartbeat, reconnect, deduplication, and tracking. [`src/stream_client.rs`](src/stream_client.rs)
-- **Research helpers** — local paper state and generic market resolution. [`src/paper.rs`](src/paper.rs) · [`src/market_results.rs`](src/market_results.rs)
+- **Gamma** — search, offset/keyset market pagination, events, and crypto-window discovery. [`src/api/gamma.rs`](src/api/gamma.rs)
+- **CLOB** — books, prices, spreads, tick sizes, market metadata, and hypothetical fill estimates. [`src/api/clob.rs`](src/api/clob.rs) · [`src/research/simulation.rs`](src/research/simulation.rs)
+- **Data API** — positions, trades, activity, holders, volume, and leaderboards. [`src/api/data.rs`](src/api/data.rs)
+- **Market WebSocket** — typed events with heartbeat, reconnect, deduplication, and tracking. [`src/streaming/stream_client.rs`](src/streaming/stream_client.rs)
+- **Research helpers** — local paper state and generic market resolution. [`src/research/paper.rs`](src/research/paper.rs) · [`src/research/market_results.rs`](src/research/market_results.rs)
 
 Inspect a book, estimate a fill, or watch a token stream:
 

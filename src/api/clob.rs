@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     gamma,
     jsonx::string_or_number,
+    query::escape,
     transport,
     types::{
         first_price, ClobMarket, ClobMarketByTokenResponse, ClobMarketOutcome, ClobNegRiskInfo,
@@ -231,19 +232,6 @@ fn cursor_path(base: &str, next_cursor: &str) -> String {
     } else {
         format!("{}?next_cursor={}", base, escape(next_cursor))
     }
-}
-
-fn escape(value: &str) -> String {
-    let mut out = String::new();
-    for b in value.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char)
-            }
-            _ => out.push_str(&format!("%{b:02X}")),
-        }
-    }
-    out
 }
 
 #[cfg(test)]

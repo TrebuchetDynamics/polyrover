@@ -7,6 +7,7 @@ use crate::{
         Activity, ClosedPosition, Holder, LeaderboardRow, LiveVolumeResponse, OpenInterest,
         PortfolioValue, Position, TotalMarketsTraded, Trade,
     },
+    query::escape,
     transport, Result,
 };
 
@@ -381,19 +382,6 @@ fn path(base: &str, pairs: &[Option<(String, String)>]) -> String {
             .collect::<Vec<_>>()
             .join("&")
     )
-}
-
-fn escape(value: &str) -> String {
-    let mut out = String::new();
-    for b in value.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char)
-            }
-            _ => out.push_str(&format!("%{b:02X}")),
-        }
-    }
-    out
 }
 
 #[cfg(test)]
