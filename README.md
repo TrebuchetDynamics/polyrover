@@ -1,69 +1,50 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="Polyrover routes public Polymarket APIs through an async Rust client to typed data, stable JSON, and local fill estimates">
+  <img src="./assets/readme/hero.svg" width="100%" alt="Polyrover turns public Polymarket APIs into typed Rust data, versioned agent JSON, and local fill estimates without fund-moving code">
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
-  <a href="#public-surface">Public surface</a> ·
+  <a href="#why-polyrover">Why Polyrover</a> ·
   <a href="#use-it-as-a-library">Rust API</a> ·
-  <a href="#capability-layers">Capabilities</a> ·
-  <a href="#safety-boundary">Safety</a>
+  <a href="#simulation-contract">Simulation</a> ·
+  <a href="#process-boundary">Boundary</a>
 </p>
 
-**Polyrover is an async Rust SDK and CLI for public Polymarket data.** It joins
-Gamma, CLOB, Data API, and market WebSocket reads behind typed models, a stable
-CLI envelope, and local simulation tools.
+**Polyrover is a safe async Rust toolkit for Polymarket research.** It gives
+Rust programs, shell pipelines, and agents one process for public market
+discovery, order-book reads, typed streams, local fill estimates, and versioned
+JSON output.
+
+- **Discover and stream markets** through Gamma, CLOB, Data API, and market WSS.
+- **Estimate executable fills locally** against a captured order-book snapshot.
+- **Automate without wallet access** using the default `public` build.
 
 > [!IMPORTANT]
-> The current release does not submit or cancel orders, sign with private keys,
-> call relayers, or execute bridge transfers. Execution and bridge features are
-> DTO-only or guarded.
+> The default artifact has no private-key signing, order submission,
+> cancellation, relayer invocation, or bridge-transfer path.
 
 ## Quick start
 
-Install the CLI from Git and make a first public request:
+Install from Git and follow one public-data workflow:
 
 ```bash
 cargo install --git https://github.com/TrebuchetDynamics/polyrover
-polyrover gamma markets --limit 3 --json
-```
 
-Every command returns the same versioned envelope, including failures with
-`ok: false`:
+# 1. Find markets and their outcome token IDs.
+polyrover gamma search --query bitcoin --limit 3 --json
 
-```json
-{
-  "ok": true,
-  "version": "1",
-  "data": {},
-  "meta": {
-    "command": "gamma markets"
-  }
-}
-```
-
-No wallet or private key is needed for the default public build.
-
-## Public surface
-
-- **Gamma** — search, offset/keyset market pagination, events, and crypto-window discovery. [`src/api/gamma.rs`](src/api/gamma.rs)
-- **CLOB** — books, prices, spreads, tick sizes, market metadata, and hypothetical fill estimates. [`src/api/clob.rs`](src/api/clob.rs) · [`src/research/simulation.rs`](src/research/simulation.rs)
-- **Data API** — positions, trades, activity, holders, volume, and leaderboards. [`src/api/data.rs`](src/api/data.rs)
-- **Market WebSocket** — typed events with heartbeat, reconnect, deduplication, and tracking. [`src/streaming/stream_client.rs`](src/streaming/stream_client.rs)
-- **Research helpers** — local paper state and generic market resolution. [`src/research/paper.rs`](src/research/paper.rs) · [`src/research/market_results.rs`](src/research/market_results.rs)
-
-Inspect a book, estimate a fill, or watch a token stream:
-
-```bash
+# 2. Inspect executable liquidity for one outcome token.
 polyrover clob book --token-id <TOKEN_ID> --json
 
+# 3. Estimate buying up to 100 USDC against the current asks.
 polyrover clob simulate \
-  --token <TOKEN_ID> \
+  --token-id <TOKEN_ID> \
   --side buy \
   --amount 100 \
   --limit-price 0.55 \
   --json
 
+# 4. Watch bounded public market events.
 polyrover stream watch \
   --token-id <TOKEN_ID> \
   --limit 10 \
@@ -71,8 +52,66 @@ polyrover stream watch \
   --json
 ```
 
+A fixture-backed simulation in the test suite produces this result shape
+(abbreviated):
+
+```json
+{
+  "ok": true,
+  "version": "1",
+  "data": {
+    "token_id": "tok",
+    "side": "buy",
+    "input_amount": "5",
+    "input_amount_type": "usdc",
+    "complete": true,
+    "filled_size": "9",
+    "notional": "5",
+    "average_price": "0.555556",
+    "best_price": "0.5",
+    "worst_price": "0.6",
+    "unfilled_amount": "0"
+  },
+  "meta": {
+    "command": "clob simulate"
+  }
+}
+```
+
+Successes and failures share the same CLI envelope. `version: "1"` versions the
+envelope—not every nested upstream payload. Payload types remain pre-1.0.
+
+## Why Polyrover
+
+Polymarket maintains a broader [official Rust SDK v2](https://github.com/Polymarket/rs-clob-client-v2)
+with typed order builders, authentication, order management, public APIs, and
+WebSockets. Use it when you need a production trading client.
+
+Polyrover is intentionally narrower. Its niche is a research process you can
+run beside agents or data pipelines without installing fund-moving code in the
+default artifact:
+
+| Need | Polyrover approach |
+| --- | --- |
+| Process isolation | Default `public` feature has no signer or execution client |
+| Reproducible automation | Every CLI command uses one versioned JSON envelope |
+| Local execution research | Book walking, fill estimates, paper state, and result reconciliation |
+| Explicit inventory | [`capabilities.json`](capabilities.json) links operations to status, source, and tests |
+| Rust integration | One async client over public Gamma, CLOB, Data API, and market WSS |
+
+The [official client documentation](https://docs.polymarket.com/api-reference/clients-sdks)
+is the authoritative source for Polymarket-supported SDKs and trading APIs.
+
+## Research surface
+
+- **Discovery** — Gamma search, events, offset/keyset market pagination, and crypto-window helpers.
+- **Executable market data** — CLOB books, prices, spreads, tick sizes, metadata, and resolution evidence.
+- **Public portfolio research** — positions, trades, activity, holders, volume, and leaderboards.
+- **Streaming** — typed market events with heartbeat, reconnect, deduplication, subscription restoration, and tracking.
+- **Local analysis** — fill estimation, paper state, wallet scoring, and generic market results.
+
 See the [endpoint capability matrix](docs/endpoint-capability-matrix.md) for the
-complete endpoint, feature, auth, implementation, and test inventory.
+operation-by-operation source and test inventory.
 
 ## Use it as a library
 
@@ -85,84 +124,100 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
 ```rust
-use polyrover::{simulation::Request, Client, ClientConfig};
+use polyrover::{
+    simulation::{simulate_book, Request},
+    Client, ClientConfig,
+};
 
 #[tokio::main]
 async fn main() -> polyrover::Result<()> {
     let client = Client::new(ClientConfig::default())?;
+    let book = client.order_book("TOKEN_ID").await?;
 
-    let price = client.price("TOKEN_ID", "buy").await?;
-    let estimate = client
-        .simulate(Request {
-            token_id: "TOKEN_ID".into(),
+    let estimate = simulate_book(
+        &book,
+        Request {
+            token_id: book.asset_id.clone(),
             side: "buy".into(),
-            amount: "100".into(),
+            amount: "100".into(), // USDC notional for buys
             limit_price: "0.55".into(),
-        })
-        .await?;
+        },
+    )?;
 
-    println!("price={price} estimated_fill={}", estimate.average_price);
+    println!(
+        "complete={} shares={} average_price={}",
+        estimate.complete, estimate.filled_size, estimate.average_price
+    );
     Ok(())
 }
 ```
 
-Paginated wallet research is available through typed Data API parameters such
-as `ClosedPositionParams`, `ActivityParams`, and `LeaderboardParams`. Network
-clients use async `reqwest` and `tokio-tungstenite`; DTO parsing, book math,
-simulation, HMAC helpers, and address derivation remain synchronous.
+Network clients use async `reqwest` and `tokio-tungstenite`. DTO parsing, book
+math, simulation, HMAC helpers, and address derivation are synchronous.
 
-## Capability layers
+## Simulation contract
+
+`clob simulate` walks one CLOB snapshot; it does not predict a future fill.
+
+- A **buy** consumes asks from lowest to highest price; `amount` is USDC notional.
+- A **sell** consumes bids from highest to lowest price; `amount` is shares.
+- Limit prices are inclusive. Ineligible levels stop the walk.
+- Invalid, non-positive, or non-finite book levels are ignored.
+- Insufficient eligible liquidity returns `complete: false` and `unfilled_amount` in the input unit.
+- Results include consumed levels, best/worst price, average price, notional, slippage, book hash, and timestamp when supplied upstream.
+- The model does **not** include fees, latency, queue position, tick rounding, minimum order size, or book staleness.
+- Calculations currently use validated decimal strings converted to `f64` and format results to six decimal places.
+
+Real execution can differ because the market can move between snapshot capture
+and order arrival.
+
+## Process boundary
+
+The current codebase is for observation, analysis, simulation, reconciliation,
+and pre-trade research. It contains no live order-placement or cancellation
+client, private-key signer, relayer caller, or bridge-transfer operation.
+
+Optional features compile additional research surfaces; they do not grant
+runtime authority:
+
+<details>
+<summary><strong>Compile-time capability layers</strong></summary>
 
 <p align="center">
-  <img src="./assets/readme/capability-map.svg" width="100%" alt="Polyrover capability layers from the public default through optional authenticated, wallet, execution DTO, and bridge DTO features">
+  <img src="./assets/readme/capability-map.svg" width="100%" alt="Polyrover capability layers from the public default through optional authenticated, wallet, execution-model, and bridge-model features">
 </p>
 
-- **`public` (default)** — Gamma, public CLOB/Data reads, market WSS, and resolution. Implemented.
-- **`authenticated`** — `public`, L2 HMAC helpers, and user WSS. Implemented.
-- **`wallet`** — pure address derivation and readiness helpers. Implemented.
-- **`execution`** — authenticated and wallet features plus order/cancel models. DTO-only; no submission.
-- **`bridge`** — bridge metadata, quote/status models, dry-run validation, and guards. No transfer execution.
-- **`full`** — every compiled surface above. It does not grant runtime authority.
+- **`public` (default)** — public Gamma/CLOB/Data reads, market WSS, and resolution.
+- **`authenticated`** — `public`, L2 HMAC helpers, and user WSS.
+- **`wallet`** — pure address derivation and readiness helpers.
+- **`execution`** — authenticated and wallet features plus order/cancel DTOs; no submission transport.
+- **`bridge`** — bridge DTOs and local dry-run validation; no transfer transport.
+- **`full`** — compiles every surface above; it is not an authorization mode.
 
-Cargo features control compilation and dependency exposure—not authorization.
-Core market and outcome identities are generic; crypto Up/Down window discovery
-is a specialized helper rather than a constraint on the SDK.
+</details>
 
-[`capabilities.json`](capabilities.json) is the machine-readable operation
-catalog shared with Polydart and named against Polymarket CLI commit `9b18b5f`.
-Its statuses are `implemented`, `dtoOnly`, `unsupported`, and `planned`.
-Taxonomy parity does not imply implementation parity.
+If you need production orders, approvals, CTF operations, or transfers, use the
+official SDK or another explicitly execution-capable boundary.
 
-## Safety boundary
+## Current limits
 
-Polyrover is built for observation, analysis, simulation, reconciliation, and
-pre-trade research. The current codebase has:
-
-- no live order-placement or cancellation path;
-- no private-key import, storage, or signing path;
-- no relayer invocation or bridge execution;
-- no wallet wizard that moves funds or silently prepares live trading.
-
-Authenticated streams, redacted auth helpers, wallet readiness helpers, and
-execution/bridge DTOs are explicit opt-ins. If you need production trading,
-approvals, CTF operations, or transfers, use an execution-capable boundary such
-as Polygolem or the official `polymarket-cli`.
-
-Simulation and paper fills are estimates. Real execution can differ because of
-latency, fees, slippage, liquidity changes, and market movement.
+- No crates.io release yet; installation tracks a Git revision.
+- Public simulation inputs are validated strings rather than domain-safe `Decimal`, `Side`, and quantity types.
+- The JSON envelope is versioned; nested upstream payload schemas have no separate compatibility version yet.
+- CI uses deterministic local fixtures and does not run a scheduled public API canary.
+- `stream watch` buffers a bounded result envelope; JSON Lines streaming is not implemented.
+- Research and backtest output is not evidence of live execution quality or strategy edge.
 
 <details>
 <summary><strong>CLI command reference</strong></summary>
 
 ```text
-polyrover async Polymarket CLI
-
 ping --json
 gamma search --query <text> [--limit n] --json
 gamma markets [--limit n] --json
 clob book --token-id <id> --json
 clob price --token-id <id> --side buy|sell --json
-clob simulate --token <id> --side buy|sell --amount <n> [--limit-price p] --json
+clob simulate --token-id <id> --side buy|sell --amount <n> [--limit-price p] --json
 analytics positions --user <wallet> [--limit n] --json
 analytics trades --user <wallet> [--limit n] --json
 analytics leaderboard [--limit n] --json
@@ -171,6 +226,8 @@ sim reset [--cash n] --json
 sim buy --token-id <id> --price <p> --size <n> --json
 sim sell --token-id <id> --price <p> --size <n> --json
 ```
+
+Run `polyrover help <command>` for command-specific options and examples.
 
 </details>
 
@@ -184,12 +241,12 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo doc --open
 ```
 
-Tests use local fixtures; they do not require live credentials.
+Tests use local fixtures and require no live credentials.
 
 ## Project references
 
 - [Endpoint and capability matrix](docs/endpoint-capability-matrix.md)
-- [ADR-0001: Universal async SDK with safe public default](docs/adr/0001-universal-async-sdk.md)
+- [ADR-0001: async SDK with safe public default](docs/adr/0001-universal-async-sdk.md)
 - [Port and parity roadmap](PORT_PLAN.md)
 
 ## License
