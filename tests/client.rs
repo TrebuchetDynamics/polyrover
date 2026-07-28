@@ -300,6 +300,86 @@ async fn client_reads_trades_through_one_public_interface() {
 }
 
 #[tokio::test]
+async fn client_reads_market_trades_through_one_public_interface() {
+    let (data_base_url, received, server) = serve_json("[]");
+    let client = Client::new(ClientConfig {
+        data_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let trades = client.market_trades("0xmarket", 6).await.unwrap();
+
+    assert!(trades.is_empty());
+    let request = received.recv().unwrap();
+    assert!(request.starts_with("GET /trades?"));
+    assert!(request.contains("market=0xmarket"));
+    assert!(request.contains("limit=6"));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_top_holders_through_one_public_interface() {
+    let (data_base_url, received, server) =
+        serve_json(r#"[{"holders":[{"proxyWallet":"0xholder","amount":12}]}]"#);
+    let client = Client::new(ClientConfig {
+        data_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let holders = client.top_holders("0xmarket", 7).await.unwrap();
+
+    assert_eq!(holders[0].address, "0xholder");
+    assert_eq!(holders[0].shares, 12.0);
+    let request = received.recv().unwrap();
+    assert!(request.starts_with("GET /holders?"));
+    assert!(request.contains("market=0xmarket"));
+    assert!(request.contains("limit=7"));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_total_value_through_one_public_interface() {
+    let (data_base_url, received, server) = serve_json(r#"{"value":42.5}"#);
+    let client = Client::new(ClientConfig {
+        data_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let value = client.total_value("0xuser").await.unwrap();
+
+    assert_eq!(value.user, "0xuser");
+    assert_eq!(value.value, 42.5);
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /value?user=0xuser "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_open_interest_through_one_public_interface() {
+    let (data_base_url, received, server) = serve_json(r#"[{"market":"0xmarket","value":1250}]"#);
+    let client = Client::new(ClientConfig {
+        data_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let interest = client.open_interest("0xmarket").await.unwrap();
+
+    assert_eq!(interest.market, "0xmarket");
+    assert_eq!(interest.open_value, 1250.0);
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /oi?market=0xmarket "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
 async fn client_reads_leaderboard_through_one_public_interface() {
     let (data_base_url, received, server) = serve_json("[]");
     let client = Client::new(ClientConfig {

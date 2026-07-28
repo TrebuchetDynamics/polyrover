@@ -4,7 +4,10 @@
 use crate::{
     clob, crypto_price,
     data::{self, ActivityParams, ClosedPositionParams, LeaderboardParams, TradeParams},
-    data_types::{Activity, ClosedPosition, LeaderboardRow, Position, Trade},
+    data_types::{
+        Activity, ClosedPosition, Holder, LeaderboardRow, OpenInterest, PortfolioValue, Position,
+        Trade,
+    },
     gamma::{self, MarketKeysetParams, MarketParams, SearchParams},
     simulation::{self, Request as SimulationRequest, ResultRow as SimulationResult},
     types::{ClobFeeRate, ClobOrderBook, Market, MarketPage, SearchResponse},
@@ -127,12 +130,28 @@ impl Client {
         self.data.trades_with(params).await
     }
 
+    pub async fn market_trades(&self, market: &str, limit: u32) -> Result<Vec<Trade>> {
+        self.data.market_trades(market, limit).await
+    }
+
     pub async fn activity(&self, user: &str, limit: u32) -> Result<Vec<Activity>> {
         self.data.activity(user, limit).await
     }
 
     pub async fn activity_with(&self, params: &ActivityParams) -> Result<Vec<Activity>> {
         self.data.activity_with(params).await
+    }
+
+    pub async fn top_holders(&self, market: &str, limit: u32) -> Result<Vec<Holder>> {
+        self.data.top_holders(market, limit).await
+    }
+
+    pub async fn total_value(&self, user: &str) -> Result<PortfolioValue> {
+        self.data.total_value(user).await
+    }
+
+    pub async fn open_interest(&self, market: &str) -> Result<OpenInterest> {
+        self.data.open_interest(market).await
     }
 
     pub async fn trader_leaderboard(&self, limit: u32) -> Result<Vec<LeaderboardRow>> {
