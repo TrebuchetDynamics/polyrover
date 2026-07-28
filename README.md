@@ -4,61 +4,54 @@
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
-  <a href="#why-polyrover">Why Polyrover</a> ·
-  <a href="#use-it-as-a-library">Rust API</a> ·
-  <a href="#simulation-contract">Simulation</a> ·
-  <a href="#process-boundary">Boundary</a>
+  <a href="#what-you-can-do">What you can do</a> ·
+  <a href="#simulation-and-fees">Simulation and fees</a> ·
+  <a href="#rust-library">Rust library</a> ·
+  <a href="#safety-boundary">Safety boundary</a>
 </p>
 
-**Polyrover is a safe async Rust toolkit for Polymarket research.** It gives
-Rust programs, shell pipelines, and agents one process for public market
-discovery, order-book reads, typed streams, local fill estimates, and versioned
-JSON output.
+**Polyrover is a Rust CLI and async library for reading public Polymarket data
+and testing hypothetical fills locally.** It discovers markets, reads order
+books and public account activity, streams market events, and returns versioned
+JSON for scripts and agents.
 
-- **Discover and stream markets** through Gamma, CLOB, Data API, and market WSS.
-- **Estimate executable fills locally** against a captured order-book snapshot.
-- **Automate without wallet access** using the default `public` build.
-
-> [!IMPORTANT]
-> The default artifact has no private-key signing, order submission,
-> cancellation, relayer invocation, or bridge-transfer path.
+The default install cannot sign, place, or cancel orders. It does not need a
+private key.
 
 ## Quick start
 
-Install from Git and follow one public-data workflow:
+Polyrover is not on crates.io yet, so install it from Git:
 
 ```bash
 cargo install --git https://github.com/TrebuchetDynamics/polyrover
+```
 
-# 1. Find markets and their outcome token IDs.
+Check connectivity, then find a market:
+
+```bash
+polyrover ping --json
 polyrover gamma search --query bitcoin --limit 3 --json
+```
 
-# 2. Inspect executable liquidity for one outcome token.
-polyrover clob book --token-id <TOKEN_ID> --json
+Copy one outcome token ID from a returned market's `clob_token_ids`, then inspect
+its book and estimate a $5 taker buy:
 
-# 3. Inspect the documented schedule and this token's live base fee.
-polyrover clob fees --json
-polyrover clob fee-rate --token-id <TOKEN_ID> --json
+```bash
+TOKEN_ID=<OUTCOME_TOKEN_ID>
 
-# 4. Estimate a taker buy, including the documented crypto fee formula.
+polyrover clob book --token-id "$TOKEN_ID" --json
 polyrover clob simulate \
-  --token-id <TOKEN_ID> \
+  --token-id "$TOKEN_ID" \
   --side buy \
-  --amount 100 \
-  --limit-price 0.55 \
+  --amount 5 \
   --fee-category crypto \
-  --json
-
-# 5. Watch bounded public market events.
-polyrover stream watch \
-  --token-id <TOKEN_ID> \
-  --limit 10 \
-  --seconds 30 \
   --json
 ```
 
-A fixture-backed simulation in the test suite produces this result shape
-(abbreviated):
+For buys, `--amount` is USDC book notional. For sells, it is the number of
+shares. The estimated fee is reported separately from the requested amount.
+
+A fee-aware result uses this shape (abbreviated):
 
 ```json
 {
@@ -72,12 +65,9 @@ A fixture-backed simulation in the test suite produces this result shape
     "complete": true,
     "filled_size": "9",
     "notional": "5",
-    "fee_category": "crypto",
-    "taker_fee_rate": "0.07",
-    "estimated_taker_fee": "0.154",
     "average_price": "0.555556",
-    "best_price": "0.5",
-    "worst_price": "0.6",
+    "estimated_taker_fee": "0.154",
+    "fee_category": "crypto",
     "unfilled_amount": "0"
   },
   "meta": {
@@ -86,44 +76,117 @@ A fixture-backed simulation in the test suite produces this result shape
 }
 ```
 
-Successes and failures share the same CLI envelope. `version: "1"` versions the
-envelope—not every nested upstream payload. Payload types remain pre-1.0.
+`complete` tells you whether the selected book levels covered the whole input.
+`filled_size` is the estimated share quantity; `estimated_taker_fee` is the
+separate USDC fee estimate. This is a snapshot calculation, not a future-fill
+guarantee.
 
-## Why Polyrover
+## What you can do
 
-Polymarket maintains a broader [official Rust SDK v2](https://github.com/Polymarket/rs-clob-client-v2)
-with typed order builders, authentication, order management, public APIs, and
-WebSockets. Use it when you need a production trading client.
-
-Polyrover is intentionally narrower. Its niche is a research process you can
-run beside agents or data pipelines without installing fund-moving code in the
-default artifact:
-
-| Need | Polyrover approach |
+| Goal | Command or API |
 | --- | --- |
-| Process isolation | Default `public` feature has no signer or execution client |
-| Reproducible automation | Every CLI command uses one versioned JSON envelope |
-| Local execution research | Book walking, fill estimates, paper state, and result reconciliation |
-| Explicit inventory | [`capabilities.json`](capabilities.json) links operations to status, source, and tests |
-| Rust integration | One async client over public Gamma, CLOB, Data API, and market WSS |
+| Find markets and events | `gamma search`, `gamma markets` |
+| Read prices and liquidity | `clob price`, `clob book` |
+| Inspect fees and order types | `clob fees`, `clob fee-rate` |
+| Estimate a taker fill | `clob simulate` |
+| Read public positions and trades | `analytics positions`, `analytics trades` |
+| Watch live public market events | `stream watch` |
+| Use the same data from Rust | `Client` over Gamma, CLOB, Data API, and market WSS |
 
-The [official client documentation](https://docs.polymarket.com/api-reference/clients-sdks)
-is the authoritative source for Polymarket-supported SDKs and trading APIs.
+All CLI successes and failures use the same JSON envelope. `version: "1"`
+versions that envelope; nested upstream payload types remain pre-1.0.
 
-## Research surface
+### When to use Polyrover
 
-- **Discovery** — Gamma search, events, offset/keyset market pagination, and crypto-window helpers.
-- **Executable market data** — CLOB books, prices, spreads, tick sizes, metadata, and resolution evidence.
-- **Public portfolio research** — positions, trades, activity, holders, volume, and leaderboards.
-- **Streaming** — typed market events with heartbeat, reconnect, deduplication, subscription restoration, and tracking.
-- **Local analysis** — fill estimation, paper state, wallet scoring, and generic market results.
+Use Polyrover when you want a small public-data process, typed Rust models,
+agent-friendly JSON, or local execution research without installing a live
+trading path.
 
-See the [endpoint capability matrix](docs/endpoint-capability-matrix.md) for the
-operation-by-operation source and test inventory.
+Use Polymarket's broader
+[official Rust SDK v2](https://github.com/Polymarket/rs-clob-client-v2) when you
+need supported authentication, order management, or production trading.
+Polyrover is not a trading bot and does not decide what, when, or how much to
+trade.
 
-## Use it as a library
+## Simulation and fees
 
-Polyrover is pre-1.0 and its network API is async-only.
+`clob simulate` walks the current order-book snapshot:
+
+- A **buy** consumes asks from lowest to highest price.
+- A **sell** consumes bids from highest to lowest price.
+- `--limit-price` stops at worse prices; the boundary price is included.
+- `complete: false` means eligible liquidity was insufficient.
+- Invalid, non-positive, or non-finite book levels are ignored.
+- Results include consumed levels, average and worst price, notional, slippage,
+  book hash, and timestamp when available.
+
+It does not model latency, queue position, future book changes, tick rounding,
+minimum order size, or stale data. Calculations use validated decimal strings
+converted to `f64`; fill values use six decimal places.
+
+### Fee-aware estimates
+
+Polymarket's [fee documentation](https://docs.polymarket.com/trading/fees) says
+makers pay no trading fee. Taker fees use:
+
+```text
+fee = shares × taker_fee_rate × price × (1 - price)
+```
+
+| Market category | Formula coefficient |
+| --- | ---: |
+| Crypto | `0.07` |
+| Sports, economics, culture, weather, other/general | `0.05` |
+| Finance, politics, mentions, tech | `0.04` |
+| Geopolitics/world events | `0` |
+
+These values are formula coefficients, not percentage labels. Polyrover applies
+the formula to each consumed price level and rounds the total to five decimal
+places in USDC.
+
+```bash
+# Offline guide: current schedule, maker rebates, formula, and order types.
+polyrover clob fees --json
+
+# Live CLOB metadata for one token, normalized as base_fee_bps.
+polyrover clob fee-rate --token-id "$TOKEN_ID" --json
+
+# Local fill estimate using the documented category coefficient.
+polyrover clob simulate \
+  --token-id "$TOKEN_ID" \
+  --side buy \
+  --amount 5 \
+  --fee-category crypto \
+  --json
+```
+
+`base_fee_bps` and the category formula coefficient are different fields; do
+not substitute one for the other. Polyrover does not infer a token's category,
+so omit `--fee-category` for the legacy fee-free estimate or supply the category
+explicitly.
+
+### Order types
+
+Polymarket treats every order as a signed limit order. A “market order” is a
+limit order priced to match resting liquidity immediately.
+
+| Type | Unfilled amount |
+| --- | --- |
+| **GTC** — Good Till Cancelled | Rests until filled or cancelled |
+| **GTD** — Good Till Date | Rests until its expiration |
+| **FOK** — Fill Or Kill | Cancels unless the full size fills immediately |
+| **FAK** — Fill And Kill | Fills what is available, then cancels the rest |
+
+A post-only order either rests as a maker or is rejected if it would match
+immediately. See Polymarket's
+[order lifecycle](https://docs.polymarket.com/concepts/order-lifecycle) for the
+authoritative trading behavior. Polyrover documents these types but does not
+submit them.
+
+## Rust library
+
+Polyrover's network API is async-only. The default `public` feature is enough for
+market discovery, public account data, streaming, and simulation.
 
 ```toml
 [dependencies]
@@ -132,126 +195,71 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
 ```rust
-use polyrover::{
-    simulation::{simulate_book, Request},
-    Client, ClientConfig,
-};
+use polyrover::{simulation::Request, Client, ClientConfig};
 
 #[tokio::main]
 async fn main() -> polyrover::Result<()> {
     let client = Client::new(ClientConfig::default())?;
-    let book = client.order_book("TOKEN_ID").await?;
-
-    let estimate = simulate_book(
-        &book,
-        Request {
-            token_id: book.asset_id.clone(),
-            side: "buy".into(),
-            amount: "100".into(), // USDC notional for buys
-            limit_price: "0.55".into(),
-        },
-    )?;
+    let estimate = client
+        .simulate_with_fee(
+            Request {
+                token_id: "TOKEN_ID".into(),
+                side: "buy".into(),
+                amount: "5".into(),
+                limit_price: "0.55".into(),
+            },
+            "crypto",
+        )
+        .await?;
 
     println!(
-        "complete={} shares={} average_price={}",
-        estimate.complete, estimate.filled_size, estimate.average_price
+        "complete={} shares={} fee_usdc={}",
+        estimate.complete, estimate.filled_size, estimate.estimated_taker_fee
     );
     Ok(())
 }
 ```
 
-Network clients use async `reqwest` and `tokio-tungstenite`. DTO parsing, book
-math, simulation, HMAC helpers, and address derivation are synchronous.
+See the [endpoint capability matrix](docs/endpoint-capability-matrix.md) for the
+operation-by-operation API and test inventory.
 
-## Orders and fees
+## Safety boundary
 
-Polymarket's [order lifecycle](https://docs.polymarket.com/concepts/order-lifecycle)
-defines every order as a signed limit order; a “market order” is an immediately
-marketable limit order.
-
-| Type | Behavior |
-| --- | --- |
-| GTC | Rests until filled or cancelled. |
-| GTD | Rests until its expiration. |
-| FOK | Fills entirely immediately or cancels. |
-| FAK | Fills available liquidity immediately and cancels the remainder. |
-
-Post-only orders rest as makers or are rejected when they would match
-immediately. Polyrover's public default documents these types but does not place
-or sign orders.
-
-The official [fee schedule](https://docs.polymarket.com/trading/fees) charges
-makers zero and calculates taker fees per fill as:
-
-```text
-fee = shares × taker_fee_rate × price × (1 - price)
-```
-
-The documented coefficient is `0.07` for crypto; `0.05` for sports, economics,
-culture, weather, and other/general; `0.04` for finance, politics, mentions, and
-tech; and `0` for geopolitics/world events. These are formula coefficients—not
-percentage labels. Fees are rounded to five decimal places in USDC.
-
-- `clob fees` prints this schedule, order types, maker rebates, formula, and source links without a network call.
-- `clob fee-rate --token-id <id>` reads the CLOB's token-specific `base_fee` value and normalizes it as `base_fee_bps`.
-- `clob simulate --fee-category <category>` estimates the taker fee across each consumed price level. Without the flag, output remains fee-free for compatibility.
-
-## Simulation contract
-
-`clob simulate` walks one CLOB snapshot; it does not predict a future fill.
-
-- A **buy** consumes asks from lowest to highest price; `amount` is USDC notional.
-- A **sell** consumes bids from highest to lowest price; `amount` is shares.
-- Limit prices are inclusive. Ineligible levels stop the walk.
-- Invalid, non-positive, or non-finite book levels are ignored.
-- Insufficient eligible liquidity returns `complete: false` and `unfilled_amount` in the input unit.
-- Results include consumed levels, best/worst price, average price, notional, slippage, book hash, and timestamp when supplied upstream.
-- With `--fee-category`, results also include the category, coefficient, and estimated taker fee. The fee is calculated per consumed level and rounded to five decimal places.
-- The model does **not** infer a market category or include latency, queue position, tick rounding, minimum order size, or book staleness.
-- Calculations currently use validated decimal strings converted to `f64`; fill results use six decimal places and fees use five.
-
-Real execution can differ because the market can move between snapshot capture
-and order arrival.
-
-## Process boundary
-
-The current codebase is for observation, analysis, simulation, reconciliation,
-and pre-trade research. It contains no live order-placement or cancellation
-client, private-key signer, relayer caller, or bridge-transfer operation.
-
-Optional features compile additional research surfaces; they do not grant
-runtime authority:
+The current release supports observation, simulation, reconciliation, and
+pre-trade research. It has no order-submission, cancellation, private-key
+signing, relayer, or bridge-transfer client.
 
 <details>
-<summary><strong>Compile-time capability layers</strong></summary>
+<summary><strong>Compile-time feature layers</strong></summary>
 
 <p align="center">
   <img src="./assets/readme/capability-map.svg" width="100%" alt="Polyrover capability layers from the public default through optional authenticated, wallet, execution-model, and bridge-model features">
 </p>
 
-- **`public` (default)** — public Gamma/CLOB/Data reads, market WSS, and resolution.
-- **`authenticated`** — `public`, L2 HMAC helpers, and user WSS.
-- **`wallet`** — pure address derivation and readiness helpers.
-- **`execution`** — authenticated and wallet features plus order/cancel DTOs; no submission transport.
-- **`bridge`** — bridge DTOs and local dry-run validation; no transfer transport.
-- **`full`** — compiles every surface above; it is not an authorization mode.
+- **`public` (default)** — Gamma, CLOB, Data API, market WSS, and resolution.
+- **`authenticated`** — public features plus L2 HMAC helpers and user WSS.
+- **`wallet`** — local address derivation and readiness helpers.
+- **`execution`** — order and cancellation data types only; no submission transport.
+- **`bridge`** — bridge data types and local validation only; no transfer transport.
+- **`full`** — compiles every surface above; it does not add runtime authority.
 
 </details>
 
-If you need production orders, approvals, CTF operations, or transfers, use the
-official SDK or another explicitly execution-capable boundary.
+The machine-readable [`capabilities.json`](capabilities.json) distinguishes
+implemented operations, data-types-only surfaces, unsupported behavior, and
+planned work.
 
 ## Current limits
 
-- No crates.io release yet; installation tracks a Git revision.
-- Public simulation inputs are validated strings rather than domain-safe `Decimal`, `Side`, and quantity types.
-- The JSON envelope is versioned; nested upstream payload schemas have no separate compatibility version yet.
-- CI uses deterministic local fixtures and does not run a scheduled public API canary.
-- `stream watch` buffers a bounded result envelope; JSON Lines streaming is not implemented.
-- Research and backtest output is not evidence of live execution quality or strategy edge.
+- No crates.io release; Git installs track a repository revision.
+- Simulation uses `f64`, not a domain-safe decimal type.
+- A book snapshot cannot predict latency, queue position, or market movement.
+- CI uses deterministic local fixtures and has no scheduled public API canary.
+- `stream watch` buffers a bounded JSON result rather than emitting JSON Lines.
+- Research or backtest output is not evidence of profitability or live readiness.
 
 <details>
-<summary><strong>CLI command reference</strong></summary>
+<summary><strong>CLI reference</strong></summary>
 
 ```text
 ping --json
@@ -271,11 +279,11 @@ sim buy --token-id <id> --price <p> --size <n> --json
 sim sell --token-id <id> --price <p> --size <n> --json
 ```
 
-Run `polyrover help <command>` for command-specific options and examples.
+Run `polyrover help <command>` for options and examples.
 
 </details>
 
-## Build and verify
+## Develop
 
 ```bash
 git clone https://github.com/TrebuchetDynamics/polyrover
