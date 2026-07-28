@@ -39,6 +39,10 @@ impl Client {
         })
     }
 
+    pub(crate) fn from_transport(transport: transport::Client) -> Self {
+        Self { transport }
+    }
+
     pub async fn get(
         &self,
         symbol: &str,

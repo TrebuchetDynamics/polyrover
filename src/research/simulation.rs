@@ -1,5 +1,8 @@
 //! Fill simulation of a hypothetical order against a CLOB book snapshot.
 
+use std::str::FromStr;
+
+use rust_decimal::{Decimal, RoundingStrategy};
 use serde::{Deserialize, Serialize};
 
 use crate::{types::ClobOrderBook, Error, Result};
@@ -146,25 +149,25 @@ pub fn simulate_book(book: &ClobOrderBook, req: Request) -> Result<ResultRow> {
         Some(parse_positive("--limit-price", &req.limit_price)?)
     };
     let mut levels = opposing_levels(book, side);
-    levels.sort_by(|a, b| {
+    levels.sort_by(|left, right| {
         if side == "buy" {
-            a.0.total_cmp(&b.0)
+            left.0.cmp(&right.0)
         } else {
-            b.0.total_cmp(&a.0)
+            right.0.cmp(&left.0)
         }
     });
 
-    let best_price = levels.first().map(|l| fmt(l.0)).unwrap_or_default();
+    let best_price = levels.first().map(|level| fmt(level.0)).unwrap_or_default();
     let mut remaining = amount;
-    let mut filled_size = 0.0;
-    let mut notional = 0.0;
+    let mut filled_size = Decimal::ZERO;
+    let mut notional = Decimal::ZERO;
     let mut fills = Vec::new();
     let mut worst_price = String::new();
 
     for (price, size) in levels.iter().copied() {
-        if limit
-            .is_some_and(|max| (side == "buy" && price > max) || (side == "sell" && price < max))
-        {
+        if limit.is_some_and(|bound| {
+            (side == "buy" && price > bound) || (side == "sell" && price < bound)
+        }) {
             break;
         }
         let (fill_size, fill_notional) = if side == "buy" {
@@ -178,7 +181,7 @@ pub fn simulate_book(book: &ClobOrderBook, req: Request) -> Result<ResultRow> {
             let fill_size = remaining.min(size);
             (fill_size, fill_size * price)
         };
-        if fill_size <= 0.0 {
+        if fill_size <= Decimal::ZERO {
             continue;
         }
         filled_size += fill_size;
@@ -195,8 +198,8 @@ pub fn simulate_book(book: &ClobOrderBook, req: Request) -> Result<ResultRow> {
         } else {
             fill_size
         };
-        if remaining <= 0.0 {
-            remaining = 0.0;
+        if remaining <= Decimal::ZERO {
+            remaining = Decimal::ZERO;
             break;
         }
     }
@@ -212,7 +215,7 @@ pub fn simulate_book(book: &ClobOrderBook, req: Request) -> Result<ResultRow> {
         input_amount: fmt(amount),
         input_amount_type: if side == "buy" { "usdc" } else { "shares" }.into(),
         limit_price: limit.map(fmt).unwrap_or_default(),
-        complete: remaining == 0.0,
+        complete: remaining == Decimal::ZERO,
         filled_size: fmt(filled_size),
         notional: fmt(notional),
         best_price,
@@ -223,18 +226,20 @@ pub fn simulate_book(book: &ClobOrderBook, req: Request) -> Result<ResultRow> {
         levels: fills,
         ..Default::default()
     };
-    if filled_size > 0.0 {
-        let avg = notional / filled_size;
-        out.average_price = fmt(avg);
+    if filled_size > Decimal::ZERO {
+        let average = notional / filled_size;
+        out.average_price = fmt(average);
         out.expected_fill_price = out.average_price.clone();
-        if let Ok(best) = out.best_price.parse::<f64>() {
+        if let Ok(best) = Decimal::from_str(&out.best_price) {
             let slippage = if side == "buy" {
-                avg - best
+                average - best
             } else {
-                best - avg
+                best - average
             };
             out.slippage = fmt(slippage);
-            out.slippage_bps = fmt(slippage / best * 10000.0);
+            if best > Decimal::ZERO {
+                out.slippage_bps = fmt(slippage / best * Decimal::from(10_000));
+            }
         }
     }
     Ok(out)
@@ -252,29 +257,30 @@ pub fn apply_taker_fee(result: &mut ResultRow, category: &str) -> Result<()> {
         .iter()
         .find(|row| row.category == canonical)
         .ok_or_else(|| Error::Invalid(format!("unsupported fee category {category:?}")))?;
-    let fee = result.levels.iter().try_fold(0.0, |total, level| {
-        let price = level
-            .price
-            .parse::<f64>()
-            .map_err(|_| Error::Invalid("simulated fill contains an invalid price".into()))?;
-        if !(0.0..=1.0).contains(&price) {
-            return Err(Error::Invalid(
-                "simulated fill price must be between 0 and 1".into(),
-            ));
-        }
-        let shares = level
-            .filled_size
-            .parse::<f64>()
-            .map_err(|_| Error::Invalid("simulated fill contains an invalid size".into()))?;
-        Ok::<_, Error>(total + shares * row.taker_fee_rate * price * (1.0 - price))
-    })?;
+    let rate = Decimal::from_str(&row.taker_fee_rate.to_string())
+        .map_err(|_| Error::Invalid("fee schedule contains an invalid rate".into()))?;
+    let fee = result
+        .levels
+        .iter()
+        .try_fold(Decimal::ZERO, |total, level| {
+            let price = Decimal::from_str(&level.price)
+                .map_err(|_| Error::Invalid("simulated fill contains an invalid price".into()))?;
+            if !(Decimal::ZERO..=Decimal::ONE).contains(&price) {
+                return Err(Error::Invalid(
+                    "simulated fill price must be between 0 and 1".into(),
+                ));
+            }
+            let shares = Decimal::from_str(&level.filled_size)
+                .map_err(|_| Error::Invalid("simulated fill contains an invalid size".into()))?;
+            Ok::<_, Error>(total + shares * rate * price * (Decimal::ONE - price))
+        })?;
     result.fee_category = row.category.into();
-    result.taker_fee_rate = fmt(row.taker_fee_rate);
+    result.taker_fee_rate = fmt(rate);
     result.estimated_taker_fee = fmt_fee(fee);
     Ok(())
 }
 
-fn opposing_levels(book: &ClobOrderBook, side: &str) -> Vec<(f64, f64)> {
+fn opposing_levels(book: &ClobOrderBook, side: &str) -> Vec<(Decimal, Decimal)> {
     let rows = if side == "sell" {
         &book.bids
     } else {
@@ -282,10 +288,9 @@ fn opposing_levels(book: &ClobOrderBook, side: &str) -> Vec<(f64, f64)> {
     };
     rows.iter()
         .filter_map(|level| {
-            let price: f64 = level.price.trim().parse().ok()?;
-            let size: f64 = level.size.trim().parse().ok()?;
-            (price > 0.0 && size > 0.0 && price.is_finite() && size.is_finite())
-                .then_some((price, size))
+            let price = Decimal::from_str(level.price.trim()).ok()?;
+            let size = Decimal::from_str(level.size.trim()).ok()?;
+            (price > Decimal::ZERO && size > Decimal::ZERO).then_some((price, size))
         })
         .collect()
 }
@@ -298,45 +303,66 @@ fn normalize_side(side: &str) -> Result<&'static str> {
     }
 }
 
-fn parse_positive(name: &str, value: &str) -> Result<f64> {
+fn parse_positive(name: &str, value: &str) -> Result<Decimal> {
     if value.contains('/') {
         return Err(Error::Invalid(format!("{name} must be a decimal")));
     }
-    let n: f64 = value
-        .trim()
-        .parse()
+    let number = Decimal::from_str(value.trim())
         .map_err(|_| Error::Invalid(format!("{name} must be a positive decimal")))?;
-    (n > 0.0 && n.is_finite())
-        .then_some(n)
+    (number > Decimal::ZERO)
+        .then_some(number)
         .ok_or_else(|| Error::Invalid(format!("{name} must be a positive decimal")))
 }
 
-fn fmt_fee(value: f64) -> String {
-    trim_decimal(format!("{value:.5}"))
+fn fmt_fee(value: Decimal) -> String {
+    format_decimal(value, 5)
 }
 
-fn fmt(value: f64) -> String {
-    trim_decimal(format!("{value:.6}"))
+fn fmt(value: Decimal) -> String {
+    format_decimal(value, 6)
 }
 
-fn trim_decimal(mut s: String) -> String {
-    while s.contains('.') && s.ends_with('0') {
-        s.pop();
-    }
-    if s.ends_with('.') {
-        s.pop();
-    }
-    if s == "-0" || s.is_empty() {
-        "0".into()
-    } else {
-        s
-    }
+fn format_decimal(value: Decimal, places: u32) -> String {
+    value
+        .round_dp_with_strategy(places, RoundingStrategy::MidpointNearestEven)
+        .normalize()
+        .to_string()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::types::ClobOrderBookLevel;
+
+    #[test]
+    fn seven_tenths_fill_completes_without_binary_residue() {
+        let book = ClobOrderBook {
+            asset_id: "tok".into(),
+            asks: (0..7)
+                .map(|_| ClobOrderBookLevel {
+                    price: "1".into(),
+                    size: "0.1".into(),
+                })
+                .collect(),
+            ..Default::default()
+        };
+
+        let result = simulate_book(
+            &book,
+            Request {
+                token_id: "tok".into(),
+                side: "buy".into(),
+                amount: "0.7".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        assert!(result.complete);
+        assert_eq!(result.filled_size, "0.7");
+        assert_eq!(result.notional, "0.7");
+        assert_eq!(result.unfilled_amount, "0");
+    }
 
     #[test]
     fn buy_walks_asks_low_to_high() {

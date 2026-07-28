@@ -25,6 +25,10 @@ impl Client {
         })
     }
 
+    pub(crate) fn from_transport(transport: transport::Client) -> Self {
+        Self { transport }
+    }
+
     pub async fn health_check(&self) -> Result<HealthResponse> {
         self.transport
             .get_raw("/")
@@ -80,30 +84,52 @@ impl Client {
     }
 }
 
+/// Offset-paginated Gamma market query.
+///
+/// Upstream implicitly behaves as `closed=false` when `closed` is omitted, so
+/// identifier lookups can silently exclude closed markets. Set `closed` explicitly
+/// when status matters. Polyoxide observed an approximately 8 KiB upstream URL
+/// ceiling and recommends conservative chunks of at most 100 slugs, 50 CLOB token
+/// IDs, or 60 condition IDs; these are empirical safe sizes, not protocol limits.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct MarketParams {
     pub limit: Option<u32>,
     pub offset: Option<u32>,
     pub order: Option<String>,
     pub ascending: Option<bool>,
+    /// Conservatively chunk to at most 100 slugs.
     pub slug: Vec<String>,
+    /// Conservatively chunk to at most 60 IDs.
     pub condition_ids: Vec<String>,
+    /// Conservatively chunk to at most 50 IDs.
     pub clob_token_ids: Vec<String>,
     pub active: Option<bool>,
+    /// Omission behaves as `false` upstream; set explicitly when status matters.
     pub closed: Option<bool>,
     pub tag_id: Option<i64>,
 }
 
+/// Keyset-paginated Gamma market query.
+///
+/// `after_cursor` is opaque and must be copied unchanged from `next_cursor`.
+/// Upstream documents a maximum `limit` of 1000 and implicitly behaves as
+/// `closed=false` when `closed` is omitted. Apply the same conservative identifier
+/// chunking documented on [`MarketParams`].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct MarketKeysetParams {
+    /// Upstream maximum: 1000.
     pub limit: Option<u32>,
+    /// Opaque cursor copied unchanged from the previous page.
     pub after_cursor: String,
     pub order: Option<String>,
     pub ascending: Option<bool>,
     pub slug: Vec<String>,
+    /// Conservatively chunk to at most 60 IDs.
     pub condition_ids: Vec<String>,
+    /// Conservatively chunk to at most 50 IDs.
     pub clob_token_ids: Vec<String>,
     pub active: Option<bool>,
+    /// Omission behaves as `false` upstream; set explicitly when status matters.
     pub closed: Option<bool>,
     pub tag_id: Option<i64>,
 }

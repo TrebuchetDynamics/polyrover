@@ -16,6 +16,17 @@ pub enum Error {
     Invalid(String),
 }
 
+impl Error {
+    pub fn is_retriable(&self) -> bool {
+        match self {
+            Self::Http(_) | Self::RateLimited { .. } | Self::ReconnectExhausted { .. } => true,
+            Self::Api { status, .. } => *status == 425 || (500..=599).contains(status),
+            Self::WebSocket(_) => true,
+            Self::Json(_) | Self::Url(_) | Self::Invalid(_) => false,
+        }
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -57,6 +68,30 @@ impl From<serde_json::Error> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn retriable_classification_is_broader_than_automatic_retry() {
+        assert!(Error::RateLimited {
+            retry_after_secs: None,
+        }
+        .is_retriable());
+        assert!(Error::Api {
+            status: 425,
+            body: String::new(),
+        }
+        .is_retriable());
+        assert!(Error::Api {
+            status: 503,
+            body: String::new(),
+        }
+        .is_retriable());
+        assert!(!Error::Api {
+            status: 400,
+            body: String::new(),
+        }
+        .is_retriable());
+        assert!(!Error::Invalid("bad input".into()).is_retriable());
+    }
 
     #[test]
     fn reconnect_exhaustion_is_typed_and_redacted() {

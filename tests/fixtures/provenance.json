@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "path": "clob/price-history.json",
+      "kind": "contract-example",
+      "source": "https://github.com/dilettante-trading/polyoxide/blob/8c1d8745/docs/specs/clob/markets.md#get-price-history",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "GET https://clob.polymarket.com/prices-history",
+      "containsLiveData": false
+    },
+    {
+      "path": "clob/batch-price-history.json",
+      "kind": "contract-example",
+      "source": "https://github.com/dilettante-trading/polyoxide/blob/8c1d8745/docs/specs/clob/markets.md#get-batch-price-history",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "POST https://clob.polymarket.com/batch-prices-history",
+      "containsLiveData": false
+    }
+  ]
+}

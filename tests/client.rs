@@ -10,6 +10,7 @@ use std::{
 use chrono::{TimeZone, Utc};
 
 use polyrover::{
+    clob::{BatchPriceHistoryParams, PriceHistoryParams},
     data::{ActivityParams, ClosedPositionParams, LeaderboardParams, TradeParams},
     gamma::{MarketKeysetParams, MarketParams, SearchParams},
     simulation::Request,
@@ -35,6 +36,26 @@ fn serve_json(body: &'static str) -> (String, mpsc::Receiver<String>, thread::Jo
             body
         )
         .unwrap();
+    });
+    (format!("http://{address}"), received, handle)
+}
+
+fn serve_sequence(
+    responses: Vec<&'static str>,
+) -> (String, mpsc::Receiver<String>, thread::JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let (requests, received) = mpsc::channel();
+    let handle = thread::spawn(move || {
+        for response in responses {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut raw = [0; 4096];
+            let length = stream.read(&mut raw).unwrap();
+            requests
+                .send(String::from_utf8_lossy(&raw[..length]).into_owned())
+                .unwrap();
+            stream.write_all(response.as_bytes()).unwrap();
+        }
     });
     (format!("http://{address}"), received, handle)
 }
@@ -106,6 +127,36 @@ async fn client_reads_clob_books_in_one_batch() {
     assert!(request.starts_with("POST /books "));
     assert!(request.contains(r#"{"token_id":"token-1"}"#));
     assert!(request.contains(r#"{"token_id":"token-2"}"#));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn public_batch_read_post_retries_429() {
+    let body = r#"[{"asset_id":"token-1","bids":[],"asks":[]}]"#;
+    let success = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    let success: &'static str = Box::leak(success.into_boxed_str());
+    let (clob_base_url, received, server) = serve_sequence(vec![
+        "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 0\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+        success,
+    ]);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        http_retry: polyrover::transport::RetryPolicy {
+            max_retries: 1,
+            base_delay_ms: 0,
+            max_delay_ms: 0,
+        },
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let books = client.order_books(&["token-1".into()]).await.unwrap();
+
+    assert_eq!(books.len(), 1);
+    assert_eq!(received.iter().take(2).count(), 2);
     server.join().unwrap();
 }
 
@@ -183,6 +234,50 @@ async fn client_pages_gamma_markets_with_keyset_cursor() {
 }
 
 #[tokio::test]
+async fn public_get_retries_429_using_fractional_retry_after() {
+    let (clob_base_url, received, server) = serve_sequence(vec![
+        "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 0.001\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 16\r\nConnection: close\r\n\r\n{\"price\":\"0.42\"}",
+    ]);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        http_retry: polyrover::transport::RetryPolicy {
+            max_retries: 1,
+            base_delay_ms: 0,
+            max_delay_ms: 1,
+        },
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    assert_eq!(client.price("token-1", "buy").await.unwrap(), "0.42");
+    assert_eq!(received.iter().take(2).count(), 2);
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn public_get_retries_425() {
+    let (clob_base_url, received, server) = serve_sequence(vec![
+        "HTTP/1.1 425 Too Early\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 16\r\nConnection: close\r\n\r\n{\"price\":\"0.43\"}",
+    ]);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        http_retry: polyrover::transport::RetryPolicy {
+            max_retries: 1,
+            base_delay_ms: 0,
+            max_delay_ms: 0,
+        },
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    assert_eq!(client.price("token-1", "buy").await.unwrap(), "0.43");
+    assert_eq!(received.iter().take(2).count(), 2);
+    server.join().unwrap();
+}
+
+#[tokio::test]
 async fn client_reads_clob_prices_through_one_public_interface() {
     let (clob_base_url, received, server) = serve_json(r#"{"price":"0.42"}"#);
     let client = Client::new(ClientConfig {
@@ -199,6 +294,99 @@ async fn client_reads_clob_prices_through_one_public_interface() {
     assert!(request.contains("token_id=token-1"));
     assert!(request.contains("side=buy"));
     server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_typed_clob_price_history() {
+    let (clob_base_url, received, server) =
+        serve_json(r#"{"history":[{"t":1700000000,"p":0.42}]}"#);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let history = client
+        .price_history(&PriceHistoryParams {
+            token_id: "token-1".into(),
+            start_ts: Some(1_700_000_000),
+            end_ts: Some(1_700_003_600),
+            interval: Some("1h".into()),
+            fidelity: Some(5),
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(history.history[0].timestamp, 1_700_000_000);
+    assert_eq!(history.history[0].price, "0.42");
+    let request = received.recv().unwrap();
+    assert!(request.starts_with("GET /prices-history?"));
+    assert!(request.contains("market=token-1"));
+    assert!(request.contains("startTs=1700000000"));
+    assert!(request.contains("endTs=1700003600"));
+    assert!(request.contains("interval=1h"));
+    assert!(request.contains("fidelity=5"));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_clob_price_history_in_one_batch() {
+    let (clob_base_url, received, server) =
+        serve_json(r#"{"history":{"token-1":[{"t":1700000000,"p":"0.42"}],"token-2":[]}}"#);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let history = client
+        .batch_price_history(&BatchPriceHistoryParams {
+            markets: vec!["token-1".into(), "token-2".into()],
+            start_ts: Some(1_700_000_000),
+            interval: Some("1h".into()),
+            fidelity: Some(5),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(history.history["token-1"][0].price, "0.42");
+    let request = received.recv().unwrap();
+    assert!(request.starts_with("POST /batch-prices-history "));
+    assert!(request.contains(r#""markets":["token-1","token-2"]"#));
+    assert!(request.contains(r#""start_ts":1700000000"#));
+    assert!(!request.contains("end_ts"));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn batch_price_history_rejects_more_than_twenty_markets() {
+    let client = polyrover::clob::Client::new("http://127.0.0.1:1").unwrap();
+    let error = client
+        .batch_price_history(&BatchPriceHistoryParams {
+            markets: (0..21).map(|index| format!("token-{index}")).collect(),
+            ..Default::default()
+        })
+        .await
+        .unwrap_err();
+
+    assert!(error.to_string().contains("1..=20 markets"));
+}
+
+#[tokio::test]
+async fn batch_price_history_rejects_empty_or_blank_markets() {
+    let client = polyrover::clob::Client::new("http://127.0.0.1:1").unwrap();
+    for markets in [Vec::new(), vec![" ".into()]] {
+        let error = client
+            .batch_price_history(&BatchPriceHistoryParams {
+                markets,
+                ..Default::default()
+            })
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("market"));
+        assert!(!error.is_retriable());
+    }
 }
 
 #[tokio::test]

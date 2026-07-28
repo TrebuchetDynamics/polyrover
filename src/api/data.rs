@@ -82,6 +82,10 @@ impl Client {
         })
     }
 
+    pub(crate) fn from_transport(transport: transport::Client) -> Self {
+        Self { transport }
+    }
+
     pub async fn health(&self) -> Result<()> {
         self.transport.get_raw("/").await.map(|_| ())
     }

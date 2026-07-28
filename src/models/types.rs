@@ -1,5 +1,7 @@
 //! Core Polymarket domain types: markets, events, normalized timestamps.
 
+use std::collections::BTreeMap;
+
 use chrono::{DateTime, FixedOffset, NaiveDate, TimeZone, Utc};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
@@ -381,9 +383,23 @@ pub struct ClobMarketByTokenResponse {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ClobPricePoint {
+    #[serde(rename = "t")]
+    pub timestamp: i64,
+    #[serde(rename = "p", default, deserialize_with = "string_or_number")]
+    pub price: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct ClobPriceHistory {
     #[serde(default)]
-    pub history: Vec<Value>,
+    pub history: Vec<ClobPricePoint>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ClobBatchPriceHistory {
+    #[serde(default)]
+    pub history: BTreeMap<String, Vec<ClobPricePoint>>,
 }
 
 pub(crate) fn first_price(values: &[&str]) -> String {

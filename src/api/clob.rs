@@ -8,14 +8,49 @@ use crate::{
     query::escape,
     transport,
     types::{
-        first_price, ClobFeeRate, ClobMarket, ClobMarketByTokenResponse, ClobMarketOutcome,
-        ClobNegRiskInfo, ClobOrderBook, ClobPaginatedMarkets, ClobServerTime, ClobTickSize,
-        CLOB_OUTCOME_RESOLVED, CLOB_OUTCOME_UNRESOLVED,
+        first_price, ClobBatchPriceHistory, ClobFeeRate, ClobMarket, ClobMarketByTokenResponse,
+        ClobMarketOutcome, ClobNegRiskInfo, ClobOrderBook, ClobPaginatedMarkets, ClobPriceHistory,
+        ClobServerTime, ClobTickSize, CLOB_OUTCOME_RESOLVED, CLOB_OUTCOME_UNRESOLVED,
     },
     Error, Result,
 };
 
 pub const DEFAULT_BASE_URL: &str = "https://clob.polymarket.com";
+
+const PRICE_HISTORY_INTERVALS: &[&str] = &["max", "all", "1m", "1w", "1d", "6h", "1h"];
+const MAX_BATCH_PRICE_HISTORY_MARKETS: usize = 20;
+
+/// Query for `GET /prices-history`.
+///
+/// `token_id` is the CLOB asset ID sent upstream as the `market` query parameter.
+/// Timestamps are inclusive UNIX seconds. Supported intervals are `max`, `all`,
+/// `1m`, `1w`, `1d`, `6h`, and `1h`; `fidelity` is resolution in minutes and
+/// defaults upstream to 1.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct PriceHistoryParams {
+    pub token_id: String,
+    pub start_ts: Option<i64>,
+    pub end_ts: Option<i64>,
+    pub interval: Option<String>,
+    pub fidelity: Option<u32>,
+}
+
+/// Body for the idempotent read-only `POST /batch-prices-history` endpoint.
+///
+/// `markets` contains 1 to 20 CLOB asset IDs. The server—not Polyrover—must split
+/// larger jobs, schedule requests, resume failures, and persist returned points.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+pub struct BatchPriceHistoryParams {
+    pub markets: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_ts: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_ts: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interval: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fidelity: Option<u32>,
+}
 
 #[derive(Clone)]
 pub struct Client {
@@ -31,6 +66,10 @@ impl Client {
         Ok(Self {
             transport: transport::Client::new(transport::Config::new(base))?,
         })
+    }
+
+    pub(crate) fn from_transport(transport: transport::Client) -> Self {
+        Self { transport }
     }
 
     pub async fn health(&self) -> Result<()> {
@@ -94,7 +133,7 @@ impl Client {
         if params.is_empty() {
             return Ok(Vec::new());
         }
-        self.transport.post_json("/books", &params).await
+        self.transport.post_json_idempotent("/books", &params).await
     }
 
     pub async fn price(&self, token_id: &str, side: &str) -> Result<String> {
@@ -135,6 +174,35 @@ impl Client {
     pub async fn fee_rate(&self, token_id: &str) -> Result<ClobFeeRate> {
         self.transport
             .get_json(&format!("/fee-rate?token_id={}", escape(token_id)))
+            .await
+    }
+
+    pub async fn price_history(&self, params: &PriceHistoryParams) -> Result<ClobPriceHistory> {
+        self.transport.get_json(&price_history_path(params)?).await
+    }
+
+    pub async fn batch_price_history(
+        &self,
+        params: &BatchPriceHistoryParams,
+    ) -> Result<ClobBatchPriceHistory> {
+        if params.markets.is_empty() || params.markets.len() > MAX_BATCH_PRICE_HISTORY_MARKETS {
+            return Err(Error::Invalid(format!(
+                "batch price history requires 1..={MAX_BATCH_PRICE_HISTORY_MARKETS} markets"
+            )));
+        }
+        if params.markets.iter().any(|market| market.trim().is_empty()) {
+            return Err(Error::Invalid(
+                "batch price history markets must not contain blank asset IDs".into(),
+            ));
+        }
+        validate_history_window(
+            params.start_ts,
+            params.end_ts,
+            params.interval.as_deref(),
+            params.fidelity,
+        )?;
+        self.transport
+            .post_json_idempotent("/batch-prices-history", params)
             .await
     }
 
@@ -233,6 +301,64 @@ async fn resolve_via_gamma(gamma_base_url: &str, condition_id: &str) -> Result<C
     )))
 }
 
+fn validate_history_window(
+    start_ts: Option<i64>,
+    end_ts: Option<i64>,
+    interval: Option<&str>,
+    fidelity: Option<u32>,
+) -> Result<()> {
+    if start_ts.zip(end_ts).is_some_and(|(start, end)| start > end) {
+        return Err(Error::Invalid(
+            "price history start_ts must not exceed end_ts".into(),
+        ));
+    }
+    if interval.is_some_and(|value| !PRICE_HISTORY_INTERVALS.contains(&value)) {
+        return Err(Error::Invalid(format!(
+            "price history interval must be one of {}",
+            PRICE_HISTORY_INTERVALS.join(", ")
+        )));
+    }
+    if fidelity == Some(0) {
+        return Err(Error::Invalid(
+            "price history fidelity must be greater than zero".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn price_history_path(params: &PriceHistoryParams) -> Result<String> {
+    if params.token_id.trim().is_empty() {
+        return Err(Error::Invalid("price history token_id is required".into()));
+    }
+    validate_history_window(
+        params.start_ts,
+        params.end_ts,
+        params.interval.as_deref(),
+        params.fidelity,
+    )?;
+    let mut pairs = vec![("market", params.token_id.clone())];
+    if let Some(value) = params.start_ts {
+        pairs.push(("startTs", value.to_string()));
+    }
+    if let Some(value) = params.end_ts {
+        pairs.push(("endTs", value.to_string()));
+    }
+    if let Some(value) = &params.interval {
+        pairs.push(("interval", value.clone()));
+    }
+    if let Some(value) = params.fidelity {
+        pairs.push(("fidelity", value.to_string()));
+    }
+    Ok(format!(
+        "/prices-history?{}",
+        pairs
+            .into_iter()
+            .map(|(key, value)| format!("{}={}", escape(key), escape(&value)))
+            .collect::<Vec<_>>()
+            .join("&")
+    ))
+}
+
 fn cursor_path(base: &str, next_cursor: &str) -> String {
     if next_cursor.is_empty() {
         base.into()
@@ -255,6 +381,30 @@ mod tests {
             format!("/book?token_id={}", escape("tok/1")),
             "/book?token_id=tok%2F1"
         );
+    }
+
+    #[test]
+    fn price_history_rejects_invalid_windows_intervals_and_fidelity() {
+        assert!(price_history_path(&PriceHistoryParams::default()).is_err());
+        assert!(price_history_path(&PriceHistoryParams {
+            token_id: "token".into(),
+            start_ts: Some(2),
+            end_ts: Some(1),
+            ..Default::default()
+        })
+        .is_err());
+        assert!(price_history_path(&PriceHistoryParams {
+            token_id: "token".into(),
+            interval: Some("forever".into()),
+            ..Default::default()
+        })
+        .is_err());
+        assert!(price_history_path(&PriceHistoryParams {
+            token_id: "token".into(),
+            fidelity: Some(0),
+            ..Default::default()
+        })
+        .is_err());
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use polyrover::capabilities::CapabilityCatalog;
+use polyrover::capabilities::{CapabilityCatalog, CapabilityStatus};
 
 fn ids() -> Vec<&'static str> {
     CapabilityCatalog::all()
@@ -14,6 +14,12 @@ fn catalog_reports_source_capabilities_independently_of_compiled_features() {
     assert!(ids.contains(&"stream.user.subscribe"));
     assert!(ids.contains(&"clob.orders.limit.submit"));
     assert!(ids.contains(&"bridge.assets.read"));
+}
+
+#[test]
+fn price_history_capability_is_implemented() {
+    let capability = CapabilityCatalog::by_id("clob.priceHistory.read").unwrap();
+    assert_eq!(capability.status, CapabilityStatus::Implemented);
 }
 
 #[test]

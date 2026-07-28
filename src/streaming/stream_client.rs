@@ -1,7 +1,7 @@
 //! Resilient market WSS subscription client: connection lifecycle, ping,
 //! pong-timeout detection, reconnect, and event deduplication.
 
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 
 use futures_util::{SinkExt, StreamExt};
 use tokio::{
@@ -269,6 +269,28 @@ impl MarketWsClient {
             .collect()
     }
 
+    /// Borrows this client as a stream of individual typed market events.
+    ///
+    /// Multi-event frames are flattened while reconnect, heartbeat, deduplication,
+    /// and statistics continue through the existing read path.
+    pub fn events(&mut self) -> impl futures_util::stream::Stream<Item = Result<MarketEvent>> + '_ {
+        futures_util::stream::unfold(
+            (self, VecDeque::<MarketEvent>::new()),
+            |(client, mut pending)| async move {
+                loop {
+                    if let Some(event) = pending.pop_front() {
+                        return Some((Ok(event), (client, pending)));
+                    }
+                    let observed_at_ms = chrono::Utc::now().timestamp_millis();
+                    match client.read_events(observed_at_ms).await {
+                        Ok(events) => pending.extend(events),
+                        Err(error) => return Some((Err(error), (client, pending))),
+                    }
+                }
+            },
+        )
+    }
+
     pub async fn read_tracked_with_status(
         &mut self,
         observed_at_ms: i64,
@@ -399,6 +421,43 @@ mod tests {
             ..Default::default()
         })
         .is_empty());
+    }
+
+    #[tokio::test]
+    async fn event_stream_flattens_array_frames_without_bypassing_stats() {
+        use futures_util::{pin_mut, SinkExt, StreamExt};
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            let _subscription = socket.next().await.unwrap().unwrap();
+            socket
+                .send(Message::Text(
+                    r#"[{"event_type":"new_market","id":"market-1"},{"event_type":"new_market","id":"market-2"}]"#.into(),
+                ))
+                .await
+                .unwrap();
+        });
+        let mut client = MarketWsClient::connect(Config {
+            url: format!("ws://{address}"),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+        client.subscribe_assets(&["token-1".into()]).await.unwrap();
+
+        {
+            let events = client.events();
+            pin_mut!(events);
+            let first = events.next().await.unwrap().unwrap();
+            let second = events.next().await.unwrap().unwrap();
+            assert!(matches!(first, MarketEvent::NewMarket(row) if row.id == "market-1"));
+            assert!(matches!(second, MarketEvent::NewMarket(row) if row.id == "market-2"));
+        }
+        assert_eq!(client.stats().messages_received, 2);
+        server.await.unwrap();
     }
 
     #[tokio::test]

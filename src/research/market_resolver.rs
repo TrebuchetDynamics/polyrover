@@ -518,6 +518,12 @@ mod tests {
             clob_base_url: base.clone(),
             data_base_url: base.clone(),
             crypto_price_base_url: base,
+            http_retry: crate::transport::RetryPolicy {
+                base_delay_ms: 0,
+                max_delay_ms: 0,
+                ..Default::default()
+            },
+            ..crate::ClientConfig::default()
         })
         .unwrap();
         (client, server)
@@ -649,9 +655,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn failed_batch_does_not_fan_out() {
+    async fn failed_batch_retries_without_fanning_out() {
         let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
-        let (client, server) = mock_client(vec![(429, "{}".into())]);
+        let (client, server) = mock_client(vec![(429, "{}".into()); 4]);
 
         let error = discover_complete_window_markets(
             &client,
@@ -664,7 +670,10 @@ mod tests {
         let requests = server.join().unwrap();
 
         assert!(matches!(error, crate::Error::RateLimited { .. }));
-        assert_eq!(requests.len(), 1);
+        assert_eq!(requests.len(), 4);
+        assert!(requests
+            .iter()
+            .all(|request| request.matches("slug=").count() == 3));
     }
 
     #[tokio::test]
@@ -722,6 +731,7 @@ mod tests {
             clob_base_url: base.clone(),
             data_base_url: base.clone(),
             crypto_price_base_url: base,
+            ..crate::ClientConfig::default()
         })?;
         let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
         let rows = discover_window_markets(&client, &["BTC".into()], start, start).await?;

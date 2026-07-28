@@ -2,7 +2,8 @@
 //! plus aggregate health reporting.
 
 use crate::{
-    clob, crypto_price,
+    clob::{self, BatchPriceHistoryParams, PriceHistoryParams},
+    crypto_price,
     data::{self, ActivityParams, ClosedPositionParams, LeaderboardParams, TradeParams},
     data_types::{
         Activity, ClosedPosition, Holder, LeaderboardRow, OpenInterest, PortfolioValue, Position,
@@ -10,7 +11,10 @@ use crate::{
     },
     gamma::{self, MarketKeysetParams, MarketParams, SearchParams},
     simulation::{self, Request as SimulationRequest, ResultRow as SimulationResult},
-    types::{ClobFeeRate, ClobOrderBook, Market, MarketPage, SearchResponse},
+    types::{
+        ClobBatchPriceHistory, ClobFeeRate, ClobOrderBook, ClobPriceHistory, Market, MarketPage,
+        SearchResponse,
+    },
     Result,
 };
 use serde::Serialize;
@@ -29,6 +33,9 @@ pub struct ClientConfig {
     pub clob_base_url: String,
     pub data_base_url: String,
     pub crypto_price_base_url: String,
+    pub http_timeout_secs: u64,
+    pub http_retry: crate::transport::RetryPolicy,
+    pub http_max_concurrent_requests: usize,
 }
 
 impl Default for ClientConfig {
@@ -38,6 +45,9 @@ impl Default for ClientConfig {
             clob_base_url: clob::DEFAULT_BASE_URL.into(),
             data_base_url: data::DEFAULT_BASE_URL.into(),
             crypto_price_base_url: crypto_price::DEFAULT_BASE_URL.into(),
+            http_timeout_secs: 30,
+            http_retry: crate::transport::RetryPolicy::default(),
+            http_max_concurrent_requests: 8,
         }
     }
 }
@@ -54,11 +64,20 @@ pub struct Client {
 impl Client {
     /// Creates a client using the configured Gamma, CLOB, and Data endpoints.
     pub fn new(config: ClientConfig) -> Result<Self> {
+        let transport = crate::transport::Client::new(crate::transport::Config {
+            base_url: config.gamma_base_url,
+            timeout_secs: config.http_timeout_secs,
+            user_agent: "polyrover/0.1".into(),
+            retry: config.http_retry,
+            max_concurrent_requests: config.http_max_concurrent_requests,
+        })?;
         Ok(Self {
-            gamma: gamma::Client::new(config.gamma_base_url)?,
-            clob: clob::Client::new(config.clob_base_url)?,
-            data: data::Client::new(config.data_base_url)?,
-            crypto_price: crypto_price::Client::new(config.crypto_price_base_url)?,
+            gamma: gamma::Client::from_transport(transport.clone()),
+            clob: clob::Client::from_transport(transport.with_base_url(config.clob_base_url)),
+            data: data::Client::from_transport(transport.with_base_url(config.data_base_url)),
+            crypto_price: crypto_price::Client::from_transport(
+                transport.with_base_url(config.crypto_price_base_url),
+            ),
         })
     }
 
@@ -93,6 +112,17 @@ impl Client {
     /// Returns the token-specific CLOB base fee in basis points.
     pub async fn fee_rate(&self, token_id: &str) -> Result<ClobFeeRate> {
         self.clob.fee_rate(token_id).await
+    }
+
+    pub async fn price_history(&self, params: &PriceHistoryParams) -> Result<ClobPriceHistory> {
+        self.clob.price_history(params).await
+    }
+
+    pub async fn batch_price_history(
+        &self,
+        params: &BatchPriceHistoryParams,
+    ) -> Result<ClobBatchPriceHistory> {
+        self.clob.batch_price_history(params).await
     }
 
     pub async fn crypto_price(

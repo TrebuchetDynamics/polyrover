@@ -858,7 +858,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["clob", "price-history"]),
         extension: false,
         summary: "Clob price history read.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "clob.prices.batchRead",

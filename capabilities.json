@@ -1308,11 +1308,18 @@
       ],
       "extension": false,
       "summary": "Clob price history read.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "clob::Client::price_history",
+        "clob::Client::batch_price_history",
+        "Client::price_history",
+        "Client::batch_price_history"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK methods are implemented; CLI parity remains unimplemented. Batch requests accept at most 20 asset IDs."
     },
     {
       "id": "clob.prices.batchRead",
