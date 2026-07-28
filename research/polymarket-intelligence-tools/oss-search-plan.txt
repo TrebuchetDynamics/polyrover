@@ -1,0 +1,35 @@
+# OSS search plan: Polymarket intelligence analytics wallet tracking alerts market discovery arbitrage
+
+- Codeberg (forge): https://codeberg.org/explore/repos?q=Polymarket+intelligence+analytics+wallet+tracking+alerts+market+discovery+arbitrage
+  Signals: stars, forks, activity, license
+  Gate: pattern-reference before dependency/integration
+- GitHub (forge): https://github.com/search?q=Polymarket+intelligence+analytics+wallet+tracking+alerts+market+discovery+arbitrage&type=repositories
+  Signals: stars, forks, recent commits, issues, license, topics
+  Gate: pattern-reference before dependency/integration
+- GitLab (forge): https://gitlab.com/search?search=Polymarket+intelligence+analytics+wallet+tracking+alerts+market+discovery+arbitrage&scope=projects
+  Signals: last activity, stars, forks, license, CI config
+  Gate: pattern-reference before dependency/integration
+- OpenSSF Scorecard (security): scorecard --repo <candidate-url>
+  Signals: branch protection, dependency update policy, CI tests, security policy
+  Gate: security review before integration
+- PyPI (package-registry): https://pypi.org/search/?q=Polymarket+intelligence+analytics+wallet+tracking+alerts+market+discovery+arbitrage
+  Signals: release cadence, project links, license, downloads
+  Gate: dependency approval before import
+- Software Heritage (archive): https://archive.softwareheritage.org/browse/search/?q=Polymarket+intelligence+analytics+wallet+tracking+alerts+market+discovery+arbitrage
+  Signals: archive presence, origin URLs, visit status
+  Gate: archive/reference only
+- SourceHut (forge): https://sr.ht/projects?search=Polymarket+intelligence+analytics+wallet+tracking+alerts+market+discovery+arbitrage
+  Signals: mailing-list activity, repository activity, license
+  Gate: pattern-reference before dependency/integration
+- Zenodo/GitHub links (research-archive): https://zenodo.org/search?q=Polymarket+intelligence+analytics+wallet+tracking+alerts+market+discovery+arbitrage
+  Signals: DOI, software release archive, license
+  Gate: citation/reference review
+- crates.io (package-registry): https://crates.io/search?q=Polymarket+intelligence+analytics+wallet+tracking+alerts+market+discovery+arbitrage
+  Signals: downloads, recent versions, repository, license
+  Gate: dependency approval before import
+- npm (package-registry): https://www.npmjs.com/search?q=Polymarket%20intelligence%20analytics%20wallet%20tracking%20alerts%20market%20discovery%20arbitrage
+  Signals: weekly downloads, versions, maintainers, repository link
+  Gate: dependency approval before import
+- pkg.go.dev (package-registry): https://pkg.go.dev/search?q=Polymarket+intelligence+analytics+wallet+tracking+alerts+market+discovery+arbitrage
+  Signals: import path, versions, licenses, dependents
+  Gate: dependency approval before import
