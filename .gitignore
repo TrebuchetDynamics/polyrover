@@ -1,2 +1,6 @@
 /target/
 .env
+
+# Local generated research outputs and vendored source snapshots.
+/research/polymarket-intelligence-tools/*
+/research/polyoxide-lessons/
