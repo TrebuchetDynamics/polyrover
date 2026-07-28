@@ -44,6 +44,25 @@ fn stream_watch_prints_events_and_stats_from_public_websocket() {
 }
 
 #[test]
+fn fees_command_documents_the_protocol_schedule() {
+    let output = Command::new(env!("CARGO_BIN_EXE_polyrover"))
+        .args(["clob", "fees", "--json"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let body: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        body["data"]["formula"],
+        "shares * taker_fee_rate * price * (1 - price)"
+    );
+    assert_eq!(body["data"]["precision_usdc"], "0.00001");
+    assert_eq!(body["data"]["categories"][0]["category"], "crypto");
+    assert_eq!(body["data"]["categories"][0]["taker_fee_rate"], 0.07);
+    assert_eq!(body["data"]["order_types"][0]["type"], "GTC");
+}
+
+#[test]
 fn help_remains_available_without_credentials() {
     let output = Command::new(env!("CARGO_BIN_EXE_polyrover"))
         .arg("help")
@@ -113,6 +132,8 @@ fn every_command_has_detailed_help() {
         &["gamma", "markets"],
         &["clob", "book"],
         &["clob", "price"],
+        &["clob", "fee-rate"],
+        &["clob", "fees"],
         &["clob", "simulate"],
         &["analytics", "positions"],
         &["analytics", "trades"],
@@ -136,6 +157,20 @@ fn every_command_has_detailed_help() {
         );
         assert!(stdout.contains("Example:"), "missing example for {path}");
     }
+}
+
+#[test]
+fn simulation_help_explains_fee_categories() {
+    let output = Command::new(env!("CARGO_BIN_EXE_polyrover"))
+        .args(["help", "clob", "simulate"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("--fee-category"));
+    assert!(stdout.contains("crypto|sports"));
+    assert!(stdout.contains("Makers pay no trading fee"));
 }
 
 #[test]

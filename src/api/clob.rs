@@ -8,9 +8,9 @@ use crate::{
     query::escape,
     transport,
     types::{
-        first_price, ClobMarket, ClobMarketByTokenResponse, ClobMarketOutcome, ClobNegRiskInfo,
-        ClobOrderBook, ClobPaginatedMarkets, ClobServerTime, ClobTickSize, CLOB_OUTCOME_RESOLVED,
-        CLOB_OUTCOME_UNRESOLVED,
+        first_price, ClobFeeRate, ClobMarket, ClobMarketByTokenResponse, ClobMarketOutcome,
+        ClobNegRiskInfo, ClobOrderBook, ClobPaginatedMarkets, ClobServerTime, ClobTickSize,
+        CLOB_OUTCOME_RESOLVED, CLOB_OUTCOME_UNRESOLVED,
     },
     Error, Result,
 };
@@ -128,6 +128,13 @@ impl Client {
     pub async fn tick_size(&self, token_id: &str) -> Result<ClobTickSize> {
         self.transport
             .get_json(&format!("/tick-size?token_id={}", escape(token_id)))
+            .await
+    }
+
+    /// Returns the token-specific CLOB base fee in basis points.
+    pub async fn fee_rate(&self, token_id: &str) -> Result<ClobFeeRate> {
+        self.transport
+            .get_json(&format!("/fee-rate?token_id={}", escape(token_id)))
             .await
     }
 

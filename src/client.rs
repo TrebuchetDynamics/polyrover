@@ -7,7 +7,7 @@ use crate::{
     data_types::{Activity, ClosedPosition, LeaderboardRow, Position, Trade},
     gamma::{self, MarketKeysetParams, MarketParams, SearchParams},
     simulation::{self, Request as SimulationRequest, ResultRow as SimulationResult},
-    types::{ClobOrderBook, Market, MarketPage, SearchResponse},
+    types::{ClobFeeRate, ClobOrderBook, Market, MarketPage, SearchResponse},
     Result,
 };
 use serde::Serialize;
@@ -87,6 +87,11 @@ impl Client {
         self.clob.price(token_id, side).await
     }
 
+    /// Returns the token-specific CLOB base fee in basis points.
+    pub async fn fee_rate(&self, token_id: &str) -> Result<ClobFeeRate> {
+        self.clob.fee_rate(token_id).await
+    }
+
     pub async fn crypto_price(
         &self,
         symbol: &str,
@@ -151,6 +156,17 @@ impl Client {
     pub async fn simulate(&self, request: SimulationRequest) -> Result<SimulationResult> {
         let book = self.order_book(&request.token_id).await?;
         simulation::simulate_book(&book, request)
+    }
+
+    /// Simulates an immediate taker fill and applies the documented category fee.
+    pub async fn simulate_with_fee(
+        &self,
+        request: SimulationRequest,
+        fee_category: &str,
+    ) -> Result<SimulationResult> {
+        let mut result = self.simulate(request).await?;
+        simulation::apply_taker_fee(&mut result, fee_category)?;
+        Ok(result)
     }
 }
 

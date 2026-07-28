@@ -4,6 +4,84 @@ use serde::{Deserialize, Serialize};
 
 use crate::{types::ClobOrderBook, Error, Result};
 
+#[derive(Clone, Copy, Debug, Serialize, PartialEq)]
+pub struct FeeScheduleRow {
+    pub category: &'static str,
+    pub taker_fee_rate: f64,
+    pub maker_fee_rate: f64,
+    pub maker_rebate_rate: Option<f64>,
+}
+
+/// Current category coefficients from <https://docs.polymarket.com/trading/fees>.
+pub const FEE_SCHEDULE: &[FeeScheduleRow] = &[
+    FeeScheduleRow {
+        category: "crypto",
+        taker_fee_rate: 0.07,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.20),
+    },
+    FeeScheduleRow {
+        category: "sports",
+        taker_fee_rate: 0.05,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.15),
+    },
+    FeeScheduleRow {
+        category: "finance",
+        taker_fee_rate: 0.04,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.25),
+    },
+    FeeScheduleRow {
+        category: "politics",
+        taker_fee_rate: 0.04,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.25),
+    },
+    FeeScheduleRow {
+        category: "economics",
+        taker_fee_rate: 0.05,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.25),
+    },
+    FeeScheduleRow {
+        category: "culture",
+        taker_fee_rate: 0.05,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.25),
+    },
+    FeeScheduleRow {
+        category: "weather",
+        taker_fee_rate: 0.05,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.25),
+    },
+    FeeScheduleRow {
+        category: "other",
+        taker_fee_rate: 0.05,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.25),
+    },
+    FeeScheduleRow {
+        category: "mentions",
+        taker_fee_rate: 0.04,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.25),
+    },
+    FeeScheduleRow {
+        category: "tech",
+        taker_fee_rate: 0.04,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: Some(0.25),
+    },
+    FeeScheduleRow {
+        category: "geopolitics",
+        taker_fee_rate: 0.0,
+        maker_fee_rate: 0.0,
+        maker_rebate_rate: None,
+    },
+];
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Request {
     pub token_id: String,
@@ -33,6 +111,12 @@ pub struct ResultRow {
     pub complete: bool,
     pub filled_size: String,
     pub notional: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub fee_category: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub taker_fee_rate: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub estimated_taker_fee: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub average_price: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -156,6 +240,40 @@ pub fn simulate_book(book: &ClobOrderBook, req: Request) -> Result<ResultRow> {
     Ok(out)
 }
 
+/// Adds the documented taker-fee estimate to an existing simulated fill.
+pub fn apply_taker_fee(result: &mut ResultRow, category: &str) -> Result<()> {
+    let normalized = category.trim().to_ascii_lowercase();
+    let canonical = match normalized.as_str() {
+        "general" => "other",
+        "world events" | "world-events" | "world_events" => "geopolitics",
+        value => value,
+    };
+    let row = FEE_SCHEDULE
+        .iter()
+        .find(|row| row.category == canonical)
+        .ok_or_else(|| Error::Invalid(format!("unsupported fee category {category:?}")))?;
+    let fee = result.levels.iter().try_fold(0.0, |total, level| {
+        let price = level
+            .price
+            .parse::<f64>()
+            .map_err(|_| Error::Invalid("simulated fill contains an invalid price".into()))?;
+        if !(0.0..=1.0).contains(&price) {
+            return Err(Error::Invalid(
+                "simulated fill price must be between 0 and 1".into(),
+            ));
+        }
+        let shares = level
+            .filled_size
+            .parse::<f64>()
+            .map_err(|_| Error::Invalid("simulated fill contains an invalid size".into()))?;
+        Ok::<_, Error>(total + shares * row.taker_fee_rate * price * (1.0 - price))
+    })?;
+    result.fee_category = row.category.into();
+    result.taker_fee_rate = fmt(row.taker_fee_rate);
+    result.estimated_taker_fee = fmt_fee(fee);
+    Ok(())
+}
+
 fn opposing_levels(book: &ClobOrderBook, side: &str) -> Vec<(f64, f64)> {
     let rows = if side == "sell" {
         &book.bids
@@ -193,8 +311,15 @@ fn parse_positive(name: &str, value: &str) -> Result<f64> {
         .ok_or_else(|| Error::Invalid(format!("{name} must be a positive decimal")))
 }
 
+fn fmt_fee(value: f64) -> String {
+    trim_decimal(format!("{value:.5}"))
+}
+
 fn fmt(value: f64) -> String {
-    let mut s = format!("{value:.6}");
+    trim_decimal(format!("{value:.6}"))
+}
+
+fn trim_decimal(mut s: String) -> String {
     while s.contains('.') && s.ends_with('0') {
         s.pop();
     }
@@ -243,6 +368,50 @@ mod tests {
         assert_eq!(got.filled_size, "9");
         assert_eq!(got.average_price, "0.555556");
         assert_eq!(got.best_price, "0.5");
+    }
+
+    #[test]
+    fn applies_documented_taker_fee_to_simulated_fills() {
+        let book = ClobOrderBook {
+            asks: vec![ClobOrderBookLevel {
+                price: "0.5".into(),
+                size: "100".into(),
+            }],
+            ..Default::default()
+        };
+        let mut got = simulate_book(
+            &book,
+            Request {
+                side: "buy".into(),
+                amount: "50".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        apply_taker_fee(&mut got, "crypto").unwrap();
+
+        assert_eq!(got.fee_category, "crypto");
+        assert_eq!(got.taker_fee_rate, "0.07");
+        assert_eq!(got.estimated_taker_fee, "1.75");
+
+        apply_taker_fee(&mut got, "world events").unwrap();
+        assert_eq!(got.fee_category, "geopolitics");
+        assert_eq!(got.estimated_taker_fee, "0");
+    }
+
+    #[test]
+    fn taker_fee_rejects_prices_outside_probability_range() {
+        let mut result = ResultRow {
+            levels: vec![FillLevel {
+                price: "1.1".into(),
+                filled_size: "1".into(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        assert!(apply_taker_fee(&mut result, "crypto").is_err());
     }
 
     #[test]

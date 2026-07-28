@@ -16,7 +16,7 @@ Taxonomy parity does not imply implementation parity.
 | Surface | Method/event | Endpoint/channel | Transport | Auth level | Cargo feature | Status | Rust API | Test |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Gamma | Search, offset/keyset markets, and events | `gamma-api.polymarket.com` | HTTPS | none | `public` | implemented | [`src/api/gamma.rs`](../src/api/gamma.rs) | [`tests/client.rs`](../tests/client.rs) |
-| CLOB | Books/prices/market metadata | `clob.polymarket.com` | HTTPS | none | `public` | implemented | [`src/api/clob.rs`](../src/api/clob.rs) | [`tests/client.rs`](../tests/client.rs) |
+| CLOB | Books, prices, token fee rates, and market metadata | `clob.polymarket.com` | HTTPS | none | `public` | implemented | [`src/api/clob.rs`](../src/api/clob.rs) | [`tests/client.rs`](../tests/client.rs) |
 | Data API | Positions, paginated closed positions/trades/activity, holders, and filtered leaderboards | `data-api.polymarket.com` | HTTPS | none | `public` | implemented | [`src/api/data.rs`](../src/api/data.rs) | [`tests/client.rs`](../tests/client.rs) |
 | Market WSS | Book/price/trade/tick/lifecycle events | `/ws/market` | WSS | none | `public` | implemented | [`src/streaming/stream_client.rs`](../src/streaming/stream_client.rs) | [`src/streaming/stream_client.rs`](../src/streaming/stream_client.rs) |
 | Resolution | Arbitrary market result | Gamma + CLOB | HTTPS | none | `public` | implemented | [`src/research/market_results.rs`](../src/research/market_results.rs) | [`tests/market_results.rs`](../tests/market_results.rs) |
@@ -57,3 +57,6 @@ Taxonomy parity does not imply implementation parity.
 - [Gamma keyset market pagination](https://docs.polymarket.com/api-reference/markets/list-markets-keyset-pagination)
 - [CLOB authentication](https://docs.polymarket.com/developers/CLOB/authentication)
 - [CLOB market WebSocket channel](https://docs.polymarket.com/developers/CLOB/websocket/market-channel)
+- [CLOB token fee rate](https://docs.polymarket.com/api-reference/market-data/get-fee-rate)
+- [Order lifecycle and order types](https://docs.polymarket.com/concepts/order-lifecycle)
+- [Trading fee formula and category schedule](https://docs.polymarket.com/trading/fees)

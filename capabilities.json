@@ -645,11 +645,15 @@
       ],
       "extension": false,
       "summary": "Clob fee rate read.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "clob::Client::fee_rate"
+      ],
+      "tests": [
+        "tests/client.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": null
     },
     {
       "id": "clob.geoblock.read",

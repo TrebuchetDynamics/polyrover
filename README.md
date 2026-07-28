@@ -36,15 +36,20 @@ polyrover gamma search --query bitcoin --limit 3 --json
 # 2. Inspect executable liquidity for one outcome token.
 polyrover clob book --token-id <TOKEN_ID> --json
 
-# 3. Estimate buying up to 100 USDC against the current asks.
+# 3. Inspect the documented schedule and this token's live base fee.
+polyrover clob fees --json
+polyrover clob fee-rate --token-id <TOKEN_ID> --json
+
+# 4. Estimate a taker buy, including the documented crypto fee formula.
 polyrover clob simulate \
   --token-id <TOKEN_ID> \
   --side buy \
   --amount 100 \
   --limit-price 0.55 \
+  --fee-category crypto \
   --json
 
-# 4. Watch bounded public market events.
+# 5. Watch bounded public market events.
 polyrover stream watch \
   --token-id <TOKEN_ID> \
   --limit 10 \
@@ -67,6 +72,9 @@ A fixture-backed simulation in the test suite produces this result shape
     "complete": true,
     "filled_size": "9",
     "notional": "5",
+    "fee_category": "crypto",
+    "taker_fee_rate": "0.07",
+    "estimated_taker_fee": "0.154",
     "average_price": "0.555556",
     "best_price": "0.5",
     "worst_price": "0.6",
@@ -155,6 +163,39 @@ async fn main() -> polyrover::Result<()> {
 Network clients use async `reqwest` and `tokio-tungstenite`. DTO parsing, book
 math, simulation, HMAC helpers, and address derivation are synchronous.
 
+## Orders and fees
+
+Polymarket's [order lifecycle](https://docs.polymarket.com/concepts/order-lifecycle)
+defines every order as a signed limit order; a “market order” is an immediately
+marketable limit order.
+
+| Type | Behavior |
+| --- | --- |
+| GTC | Rests until filled or cancelled. |
+| GTD | Rests until its expiration. |
+| FOK | Fills entirely immediately or cancels. |
+| FAK | Fills available liquidity immediately and cancels the remainder. |
+
+Post-only orders rest as makers or are rejected when they would match
+immediately. Polyrover's public default documents these types but does not place
+or sign orders.
+
+The official [fee schedule](https://docs.polymarket.com/trading/fees) charges
+makers zero and calculates taker fees per fill as:
+
+```text
+fee = shares × taker_fee_rate × price × (1 - price)
+```
+
+The documented coefficient is `0.07` for crypto; `0.05` for sports, economics,
+culture, weather, and other/general; `0.04` for finance, politics, mentions, and
+tech; and `0` for geopolitics/world events. These are formula coefficients—not
+percentage labels. Fees are rounded to five decimal places in USDC.
+
+- `clob fees` prints this schedule, order types, maker rebates, formula, and source links without a network call.
+- `clob fee-rate --token-id <id>` reads the CLOB's token-specific `base_fee` value and normalizes it as `base_fee_bps`.
+- `clob simulate --fee-category <category>` estimates the taker fee across each consumed price level. Without the flag, output remains fee-free for compatibility.
+
 ## Simulation contract
 
 `clob simulate` walks one CLOB snapshot; it does not predict a future fill.
@@ -165,8 +206,9 @@ math, simulation, HMAC helpers, and address derivation are synchronous.
 - Invalid, non-positive, or non-finite book levels are ignored.
 - Insufficient eligible liquidity returns `complete: false` and `unfilled_amount` in the input unit.
 - Results include consumed levels, best/worst price, average price, notional, slippage, book hash, and timestamp when supplied upstream.
-- The model does **not** include fees, latency, queue position, tick rounding, minimum order size, or book staleness.
-- Calculations currently use validated decimal strings converted to `f64` and format results to six decimal places.
+- With `--fee-category`, results also include the category, coefficient, and estimated taker fee. The fee is calculated per consumed level and rounded to five decimal places.
+- The model does **not** infer a market category or include latency, queue position, tick rounding, minimum order size, or book staleness.
+- Calculations currently use validated decimal strings converted to `f64`; fill results use six decimal places and fees use five.
 
 Real execution can differ because the market can move between snapshot capture
 and order arrival.
@@ -217,7 +259,9 @@ gamma search --query <text> [--limit n] --json
 gamma markets [--limit n] --json
 clob book --token-id <id> --json
 clob price --token-id <id> --side buy|sell --json
-clob simulate --token-id <id> --side buy|sell --amount <n> [--limit-price p] --json
+clob fee-rate --token-id <id> --json
+clob fees --json
+clob simulate --token-id <id> --side buy|sell --amount <n> [--limit-price p] [--fee-category category] --json
 analytics positions --user <wallet> [--limit n] --json
 analytics trades --user <wallet> [--limit n] --json
 analytics leaderboard [--limit n] --json

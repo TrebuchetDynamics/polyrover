@@ -494,7 +494,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["clob", "fee-rate"]),
         extension: false,
         summary: "Clob fee rate read.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "clob.geoblock.read",

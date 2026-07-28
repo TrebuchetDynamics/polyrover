@@ -202,6 +202,25 @@ async fn client_reads_clob_prices_through_one_public_interface() {
 }
 
 #[tokio::test]
+async fn client_reads_fee_rate_through_one_public_interface() {
+    let (clob_base_url, received, server) = serve_json(r#"{"base_fee":30}"#);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let fee = client.fee_rate("token-1").await.unwrap();
+
+    assert_eq!(fee.base_fee_bps, 30);
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /fee-rate?token_id=token-1 "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
 async fn client_reads_crypto_reference_price_through_one_public_interface() {
     let (crypto_price_base_url, received, server) = serve_json(
         r#"{"openPrice":64000.5,"closePrice":64010.25,"timestamp":1778745300000,"completed":false,"incomplete":false,"cached":true}"#,
@@ -496,6 +515,33 @@ async fn client_simulates_fills_through_one_public_interface() {
         .recv()
         .unwrap()
         .starts_with("GET /book?token_id=token-1 "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_simulates_fills_with_documented_fee_category() {
+    let (clob_base_url, _received, server) =
+        serve_json(r#"{"asset_id":"token-1","asks":[{"price":"0.5","size":"100"}]}"#);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let fill = client
+        .simulate_with_fee(
+            Request {
+                token_id: "token-1".into(),
+                side: "buy".into(),
+                amount: "50".into(),
+                limit_price: String::new(),
+            },
+            "crypto",
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(fill.estimated_taker_fee, "1.75");
     server.join().unwrap();
 }
 

@@ -5,7 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 use crate::jsonx::{
-    bool_or_false, first_non_empty, scalar_to_string, string_or_number, StringOrArray,
+    bool_or_false, first_non_empty, int_or_zero, scalar_to_string, string_or_number, StringOrArray,
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -287,6 +287,19 @@ impl ClobTickSize {
             .filter_map(|raw| raw.trim().parse::<f64>().ok())
             .find(|v| positive_finite(*v))
     }
+}
+
+/// Token-specific CLOB base fee, normalized from the upstream `base_fee` field.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ClobFeeRate {
+    #[serde(
+        default,
+        rename = "base_fee_bps",
+        alias = "base_fee",
+        alias = "baseFee",
+        deserialize_with = "int_or_zero"
+    )]
+    pub base_fee_bps: i64,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]

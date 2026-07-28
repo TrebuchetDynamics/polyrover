@@ -40,11 +40,15 @@ async fn run() -> Result<()> {
         [group, cmd, rest @ ..] if group == "gamma" && cmd == "markets" => {
             gamma_markets(&client, rest).await
         }
+        [group, cmd, rest @ ..] if group == "clob" && cmd == "fees" => clob_fees(rest),
         [group, cmd, rest @ ..] if group == "clob" && cmd == "book" => {
             clob_book(&client, rest).await
         }
         [group, cmd, rest @ ..] if group == "clob" && cmd == "price" => {
             clob_price(&client, rest).await
+        }
+        [group, cmd, rest @ ..] if group == "clob" && cmd == "fee-rate" => {
+            clob_fee_rate(&client, rest).await
         }
         [group, cmd, rest @ ..] if group == "clob" && cmd == "simulate" => {
             clob_simulate(&client, rest).await
@@ -98,6 +102,34 @@ async fn gamma_markets(client: &Client, args: &[String]) -> Result<()> {
     )
 }
 
+fn clob_fees(args: &[String]) -> Result<()> {
+    if !args.is_empty() {
+        return Err(unknown_command(
+            &[vec!["clob".into(), "fees".into()], args.to_vec()].concat(),
+        ));
+    }
+    print_success(
+        "clob fees",
+        json!({
+            "formula": "shares * taker_fee_rate * price * (1 - price)",
+            "precision_usdc": "0.00001",
+            "makers_pay_fees": false,
+            "categories": simulation::FEE_SCHEDULE,
+            "order_types": [
+                {"type": "GTC", "behavior": "rests until filled or cancelled"},
+                {"type": "GTD", "behavior": "rests until its expiration"},
+                {"type": "FOK", "behavior": "fills entirely or cancels immediately"},
+                {"type": "FAK", "behavior": "fills available liquidity and cancels the remainder"}
+            ],
+            "post_only": "rests as maker or is rejected if it would match immediately",
+            "sources": [
+                "https://docs.polymarket.com/trading/fees",
+                "https://docs.polymarket.com/concepts/order-lifecycle"
+            ]
+        }),
+    )
+}
+
 async fn clob_book(client: &Client, args: &[String]) -> Result<()> {
     let token = flag(args, "--token-id").unwrap_or_default();
     print_success("clob book", client.order_book(&token).await?)
@@ -112,24 +144,27 @@ async fn clob_price(client: &Client, args: &[String]) -> Result<()> {
     )
 }
 
+async fn clob_fee_rate(client: &Client, args: &[String]) -> Result<()> {
+    let token = flag(args, "--token-id").unwrap_or_default();
+    print_success("clob fee-rate", client.fee_rate(&token).await?)
+}
+
 async fn clob_simulate(client: &Client, args: &[String]) -> Result<()> {
-    let token = flag(args, "--token")
-        .or_else(|| flag(args, "--token-id"))
-        .unwrap_or_default();
-    let side = flag(args, "--side").unwrap_or_else(|| "buy".into());
-    let amount = flag(args, "--amount").unwrap_or_default();
-    let limit_price = flag(args, "--limit-price").unwrap_or_default();
-    print_success(
-        "clob simulate",
-        client
-            .simulate(simulation::Request {
-                token_id: token,
-                side,
-                amount,
-                limit_price,
-            })
-            .await?,
-    )
+    let request = simulation::Request {
+        token_id: flag(args, "--token")
+            .or_else(|| flag(args, "--token-id"))
+            .unwrap_or_default(),
+        side: flag(args, "--side").unwrap_or_else(|| "buy".into()),
+        amount: flag(args, "--amount").unwrap_or_default(),
+        limit_price: flag(args, "--limit-price").unwrap_or_default(),
+    };
+    let category = flag(args, "--fee-category").unwrap_or_default();
+    let result = if category.is_empty() {
+        client.simulate(request).await?
+    } else {
+        client.simulate_with_fee(request, &category).await?
+    };
+    print_success("clob simulate", result)
 }
 
 async fn data_positions(client: &Client, args: &[String]) -> Result<()> {
@@ -247,7 +282,7 @@ fn print_success<T: serde::Serialize>(command: &str, data: T) -> Result<()> {
 }
 
 fn print_help() {
-    println!("polyrover async Polymarket CLI\n\nUsage: polyrover <command> [options]\n\nCommands:\n  Public data:\n    ping                       Check API health\n    gamma search               Search Gamma markets, events, and profiles\n    gamma markets              List Gamma markets\n    clob book                  Fetch an order book\n    clob price                 Fetch a side price\n    clob simulate              Estimate a fill\n    analytics positions        Fetch wallet positions\n    analytics trades           Fetch wallet trades\n    analytics leaderboard      Fetch the trader leaderboard\n\n  Streaming:\n    stream watch               Watch public market events\n\n  Local simulation:\n    sim reset                  Create a fresh paper state\n    sim buy                    Apply a local paper buy\n    sim sell                   Apply a local paper sell\n\nGlobal options:\n  --json        Print the versioned JSON envelope\n  -h, --help    Show help\n\nRun `polyrover help <command>` for command-specific usage and examples.");
+    println!("polyrover async Polymarket CLI\n\nUsage: polyrover <command> [options]\n\nCommands:\n  Public data:\n    ping                       Check API health\n    gamma search               Search Gamma markets, events, and profiles\n    gamma markets              List Gamma markets\n    clob book                  Fetch an order book\n    clob price                 Fetch a side price\n    clob fee-rate              Fetch a token's base fee in bps\n    clob fees                  Show order types and the documented fee schedule\n    clob simulate              Estimate a fill, optionally including taker fees\n    analytics positions        Fetch wallet positions\n    analytics trades           Fetch wallet trades\n    analytics leaderboard      Fetch the trader leaderboard\n\n  Streaming:\n    stream watch               Watch public market events\n\n  Local simulation:\n    sim reset                  Create a fresh paper state\n    sim buy                    Apply a local paper buy\n    sim sell                   Apply a local paper sell\n\nGlobal options:\n  --json        Print the versioned JSON envelope\n  -h, --help    Show help\n\nRun `polyrover help <command>` for command-specific usage and examples.");
 }
 
 fn print_command_help(command: &[String]) -> Result<()> {
@@ -258,8 +293,8 @@ fn print_command_help(command: &[String]) -> Result<()> {
                 "  search     Search markets, events, and profiles\n  markets    List markets",
             )),
             "clob" => Some((
-                "Read public CLOB data and estimate fills.",
-                "  book        Fetch an order book\n  price       Fetch a side price\n  simulate    Estimate a fill",
+                "Read public CLOB data, inspect fees and order types, and estimate fills.",
+                "  book        Fetch an order book\n  price       Fetch a side price\n  fee-rate    Fetch a token's base fee in bps\n  fees        Show the documented fee schedule and order types\n  simulate    Estimate a fill, optionally including taker fees",
             )),
             "analytics" => Some((
                 "Read public wallet and leaderboard data.",
@@ -312,11 +347,23 @@ fn print_command_help(command: &[String]) -> Result<()> {
             "  --token-id <id>    CLOB token ID (required)\n  --side <side>      buy or sell (default: buy)\n",
             "polyrover clob price --token-id TOKEN_ID --side buy --json",
         ),
+        [group, command] if group == "clob" && command == "fee-rate" => (
+            "Fetch a token's CLOB base fee in basis points.",
+            "clob fee-rate --token-id <id> [--json]",
+            "  --token-id <id>    CLOB token ID (required)\n",
+            "polyrover clob fee-rate --token-id TOKEN_ID --json",
+        ),
+        [group, command] if group == "clob" && command == "fees" => (
+            "Show Polymarket order types and the documented category fee schedule. Makers pay no trading fee; takers pay shares × rate × price × (1 - price).",
+            "clob fees [--json]",
+            "",
+            "polyrover clob fees --json",
+        ),
         [group, command] if group == "clob" && command == "simulate" => (
-            "Estimate a fill against the current CLOB book.",
-            "clob simulate --token <id> --amount <n> [--side buy|sell] [--limit-price <p>] [--json]",
-            "  --token <id>        CLOB token ID (required; --token-id also accepted)\n  --amount <n>       Amount to simulate (required)\n  --side <side>      buy or sell (default: buy)\n  --limit-price <p>  Optional price limit\n",
-            "polyrover clob simulate --token TOKEN_ID --amount 100 --limit-price 0.55 --json",
+            "Estimate a taker fill against the current CLOB book. Makers pay no trading fee. Add --fee-category to estimate the documented taker fee per consumed level.",
+            "clob simulate --token <id> --amount <n> [--side buy|sell] [--limit-price <p>] [--fee-category <category>] [--json]",
+            "  --token <id>          CLOB token ID (required; --token-id also accepted)\n  --amount <n>         Amount to simulate (required)\n  --side <side>        buy or sell (default: buy)\n  --limit-price <p>    Optional price limit\n  --fee-category <c>  crypto|sports|finance|politics|economics|culture|weather|other|mentions|tech|geopolitics\n",
+            "polyrover clob simulate --token TOKEN_ID --amount 100 --fee-category crypto --json",
         ),
         [group, command] if group == "analytics" && command == "positions" => (
             "Fetch a wallet's current positions.",
