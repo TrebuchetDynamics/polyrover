@@ -4,6 +4,7 @@
 
 ### Added
 
+- Linked CLI help and current project documentation to Polymarket's official API and SDK guidance.
 - Documented public historical-query parity with atomic Gamma event pages, builder trade/leaderboard/volume history, rebates, combo activity, and bounded CLOB/Gamma/Data CLI commands.
 - Opt-in, library-only L2-authenticated trade, order, and reward history reads with per-call borrowed credentials.
 

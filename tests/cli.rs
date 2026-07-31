@@ -121,6 +121,21 @@ fn historical_help_is_complete_and_explains_bounded_requests() {
 }
 
 #[test]
+fn every_help_level_links_the_current_official_api_guide() {
+    let binary = env!("CARGO_BIN_EXE_polyrover");
+    for args in [
+        vec!["--help"],
+        vec!["help", "gamma"],
+        vec!["help", "clob", "book"],
+    ] {
+        let output = Command::new(binary).args(args).output().unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(output.status.success());
+        assert!(stdout.contains("https://docs.polymarket.com/getting-started/api"));
+    }
+}
+
+#[test]
 fn help_command_shows_usage_options_defaults_and_example() {
     let output = Command::new(env!("CARGO_BIN_EXE_polyrover"))
         .args(["help", "analytics", "positions"])

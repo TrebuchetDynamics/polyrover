@@ -33,10 +33,11 @@ default build.
 CLI successes and failures share one versioned JSON envelope for scripts and
 agents. The default `public` feature contains no fund-moving path.
 
-Use Polyrover for public-data tooling and local execution research. Use
-Polymarket's
-[official Rust SDK v2](https://github.com/Polymarket/rs-clob-client-v2) when you
-need API-key creation, order management, or production trading.
+Use Polyrover for public-data tooling and local execution research. For API-key
+creation, order management, or production trading, follow Polymarket's
+[official SDK and API guidance](https://docs.polymarket.com/getting-started/sdks-apis).
+The current official documentation says its unified Rust SDK is still in
+development.
 
 ## Quick start
 
@@ -432,6 +433,7 @@ Tests use local fixtures and require no live credentials.
 - [Crate on crates.io](https://crates.io/crates/polyrover)
 - [Rust API documentation](https://docs.rs/polyrover/0.1.0/polyrover/)
 - [Endpoint and capability matrix](docs/endpoint-capability-matrix.md)
+- [Official Polymarket API guide](https://docs.polymarket.com/getting-started/api)
 - [ADR-0001: async SDK with safe public default](docs/adr/0001-universal-async-sdk.md)
 - [Port and parity roadmap](PORT_PLAN.md)
 
