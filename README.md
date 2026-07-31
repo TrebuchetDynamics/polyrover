@@ -184,7 +184,7 @@ async fn main() -> polyrover::Result<()> {
 ```
 
 <details>
-<summary><strong>Current v0.2.0 source: price history and event streams</strong></summary>
+<summary><strong>Current v0.2.0 source: public historical reads and event streams</strong></summary>
 
 These APIs are newer than published v0.1.0. Use the Git revision until v0.2.0
 is published to crates.io:
@@ -231,6 +231,11 @@ let trades = client
     .await?;
 ```
 
+The public SDK also provides one-request `builder_trades`, `rebates`, and
+`combo_activity` reads. They remain SDK-only: the CLI exposes the bounded
+commands in the [CLI reference](#cli-reference), while callers of these three
+methods own cursor traversal and persistence.
+
 Or borrow the resilient market client as a typed stream. Drop the adapter before
 using the client directly again:
 
@@ -276,7 +281,11 @@ let page = client
     .await?;
 ```
 
-`account_address`, `api_key`, and `previous_next_cursor` are supplied by the caller and must not be logged. Each call returns one upstream page; no authenticated CLI, key creation, signing key, order mutation, traversal, or persistence is provided.
+`authenticated_clob::Client` additionally exposes one-request `rewards_page`,
+`rewards_total`, and `rewards_markets_page` reads. `account_address`, `api_key`,
+and `previous_next_cursor` are supplied by the caller and must not be logged.
+Each call returns one upstream response/page; no authenticated CLI, key creation,
+signing key, order mutation, traversal, or persistence is provided.
 
 </details>
 

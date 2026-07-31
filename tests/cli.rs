@@ -96,6 +96,31 @@ fn top_level_help_groups_commands_and_points_to_detailed_help() {
 }
 
 #[test]
+fn historical_help_is_complete_and_explains_bounded_requests() {
+    let binary = env!("CARGO_BIN_EXE_polyrover");
+    let top = Command::new(binary).arg("--help").output().unwrap();
+    let top = String::from_utf8(top.stdout).unwrap();
+    for command in [
+        "gamma market-page",
+        "gamma event-page",
+        "clob price-history",
+        "clob batch-price-history",
+        "analytics closed-positions",
+        "analytics builder-volume",
+    ] {
+        assert!(top.contains(command), "missing {command}");
+    }
+    assert_eq!(top.matches("Fetch the trader leaderboard").count(), 1);
+
+    for group in ["gamma", "clob", "analytics"] {
+        let output = Command::new(binary).args(["help", group]).output().unwrap();
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("one bounded upstream request"), "{group}");
+        assert!(stdout.contains("Callers own pagination"), "{group}");
+    }
+}
+
+#[test]
 fn help_command_shows_usage_options_defaults_and_example() {
     let output = Command::new(env!("CARGO_BIN_EXE_polyrover"))
         .args(["help", "analytics", "positions"])
