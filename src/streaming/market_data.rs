@@ -1,8 +1,9 @@
 //! Order-book state maintenance from stream events: book updates,
 //! top-of-book, liquidity, and depth calculations.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::FromStr};
 
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::stream::{
@@ -56,23 +57,23 @@ pub struct Snapshot {
 pub struct Liquidity {
     pub market_id: String,
     pub asset_id: String,
-    pub bid_size: f64,
-    pub ask_size: f64,
-    pub imbalance: f64,
+    pub bid_size: Decimal,
+    pub ask_size: Decimal,
+    pub imbalance: Decimal,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Depth {
     pub market_id: String,
     pub asset_id: String,
-    pub total_bid: f64,
-    pub total_ask: f64,
-    pub bid_depth_1c: f64,
-    pub bid_depth_2c: f64,
-    pub bid_depth_5c: f64,
-    pub ask_depth_1c: f64,
-    pub ask_depth_2c: f64,
-    pub ask_depth_5c: f64,
+    pub total_bid: Decimal,
+    pub total_ask: Decimal,
+    pub bid_depth_1c: Decimal,
+    pub bid_depth_2c: Decimal,
+    pub bid_depth_5c: Decimal,
+    pub ask_depth_1c: Decimal,
+    pub ask_depth_2c: Decimal,
+    pub ask_depth_5c: Decimal,
 }
 
 impl Snapshot {
@@ -80,18 +81,18 @@ impl Snapshot {
         let bid = self
             .bids
             .first()
-            .map_or(0.0, |level| parse_number(&level.size));
+            .map_or(Decimal::ZERO, |level| parse_number(&level.size));
         let ask = self
             .asks
             .first()
-            .map_or(0.0, |level| parse_number(&level.size));
+            .map_or(Decimal::ZERO, |level| parse_number(&level.size));
         Liquidity {
             market_id: self.market.clone(),
             asset_id: self.asset_id.clone(),
             bid_size: bid,
             ask_size: ask,
-            imbalance: if bid + ask == 0.0 {
-                0.0
+            imbalance: if bid + ask == Decimal::ZERO {
+                Decimal::ZERO
             } else {
                 bid / (bid + ask)
             },
@@ -107,11 +108,11 @@ impl Snapshot {
         let best_bid = self
             .bids
             .first()
-            .map_or(0.0, |level| parse_number(&level.price));
+            .map_or(Decimal::ZERO, |level| parse_number(&level.price));
         let best_ask = self
             .asks
             .first()
-            .map_or(0.0, |level| parse_number(&level.price));
+            .map_or(Decimal::ZERO, |level| parse_number(&level.price));
         for level in &self.bids {
             let price = parse_number(&level.price);
             let size = parse_number(&level.size);
@@ -140,18 +141,24 @@ impl Snapshot {
     }
 }
 
-fn parse_number(value: &str) -> f64 {
-    value.trim().parse().unwrap_or(0.0)
+fn parse_number(value: &str) -> Decimal {
+    Decimal::from_str(value.trim()).unwrap_or(Decimal::ZERO)
 }
 
-fn add_depth(size: f64, distance: f64, one: &mut f64, two: &mut f64, five: &mut f64) {
-    if (0.0..=0.010000001).contains(&distance) {
+fn add_depth(
+    size: Decimal,
+    distance: Decimal,
+    one: &mut Decimal,
+    two: &mut Decimal,
+    five: &mut Decimal,
+) {
+    if (Decimal::ZERO..=Decimal::new(1, 2)).contains(&distance) {
         *one += size;
     }
-    if (0.0..=0.020000001).contains(&distance) {
+    if (Decimal::ZERO..=Decimal::new(2, 2)).contains(&distance) {
         *two += size;
     }
-    if (0.0..=0.050000001).contains(&distance) {
+    if (Decimal::ZERO..=Decimal::new(5, 2)).contains(&distance) {
         *five += size;
     }
 }
@@ -409,14 +416,14 @@ fn upsert_level(levels: &mut Vec<Level>, price: &str, size: &str) {
 }
 
 fn is_zero_size(size: &str) -> bool {
-    size.trim().parse::<f64>().is_ok_and(|v| v == 0.0)
+    Decimal::from_str(size.trim()).is_ok_and(|value| value == Decimal::ZERO)
 }
 
 fn sort_levels(levels: &mut [Level], bid: bool) {
     levels.sort_by(
         |a, b| match (parse_price(&a.price), parse_price(&b.price)) {
-            (Some(left), Some(right)) if bid => right.total_cmp(&left),
-            (Some(left), Some(right)) => left.total_cmp(&right),
+            (Some(left), Some(right)) if bid => right.cmp(&left),
+            (Some(left), Some(right)) => left.cmp(&right),
             (Some(_), None) => std::cmp::Ordering::Less,
             (None, Some(_)) => std::cmp::Ordering::Greater,
             (None, None) => std::cmp::Ordering::Equal,
@@ -444,24 +451,19 @@ fn refresh_midpoint(snapshot: &mut Snapshot) {
 }
 
 fn midpoint(bid: &str, ask: &str) -> Option<String> {
-    Some(format_float((parse_price(bid)? + parse_price(ask)?) / 2.0))
+    Some(format_decimal(
+        (parse_price(bid)? + parse_price(ask)?) / Decimal::new(2, 0),
+    ))
 }
 fn spread(bid: &str, ask: &str) -> Option<String> {
-    Some(format_float(parse_price(ask)? - parse_price(bid)?))
+    Some(format_decimal(parse_price(ask)? - parse_price(bid)?))
 }
-fn parse_price(value: &str) -> Option<f64> {
-    value.trim().parse().ok()
+fn parse_price(value: &str) -> Option<Decimal> {
+    Decimal::from_str(value.trim()).ok()
 }
 
-fn format_float(value: f64) -> String {
-    let mut s = format!("{value:.12}");
-    while s.contains('.') && s.ends_with('0') {
-        s.pop();
-    }
-    if s.ends_with('.') {
-        s.pop();
-    }
-    s
+fn format_decimal(value: Decimal) -> String {
+    value.normalize().to_string()
 }
 
 fn first_non_empty(values: &[&str]) -> String {
@@ -544,11 +546,105 @@ mod tests {
             ],
             ..Default::default()
         };
-        assert_eq!(snapshot.liquidity().imbalance, 1.0 / 3.0);
+        assert_eq!(
+            snapshot.liquidity().imbalance,
+            Decimal::new(1, 0) / Decimal::new(3, 0)
+        );
         let depth = snapshot.depth();
-        assert_eq!((depth.total_bid, depth.total_ask), (15.0, 27.0));
-        assert_eq!((depth.bid_depth_1c, depth.bid_depth_2c), (10.0, 15.0));
-        assert_eq!((depth.ask_depth_2c, depth.ask_depth_5c), (20.0, 27.0));
+        assert_eq!(
+            (depth.total_bid, depth.total_ask),
+            (Decimal::new(15, 0), Decimal::new(27, 0))
+        );
+        assert_eq!(
+            (depth.bid_depth_1c, depth.bid_depth_2c),
+            (Decimal::new(10, 0), Decimal::new(15, 0))
+        );
+        assert_eq!(
+            (depth.ask_depth_2c, depth.ask_depth_5c),
+            (Decimal::new(20, 0), Decimal::new(27, 0))
+        );
+    }
+
+    #[test]
+    fn decimal_depth_uses_exact_cent_boundaries() {
+        use rust_decimal::Decimal;
+
+        let snapshot = Snapshot {
+            bids: vec![
+                Level {
+                    price: "0.50".into(),
+                    size: "1.1".into(),
+                },
+                Level {
+                    price: "0.49".into(),
+                    size: "2.2".into(),
+                },
+                Level {
+                    price: "0.48".into(),
+                    size: "3.3".into(),
+                },
+                Level {
+                    price: "0.45".into(),
+                    size: "4.4".into(),
+                },
+                Level {
+                    price: "0.449999".into(),
+                    size: "99".into(),
+                },
+            ],
+            asks: vec![
+                Level {
+                    price: "0.51".into(),
+                    size: "1".into(),
+                },
+                Level {
+                    price: "0.52".into(),
+                    size: "2".into(),
+                },
+                Level {
+                    price: "0.53".into(),
+                    size: "3".into(),
+                },
+                Level {
+                    price: "0.56".into(),
+                    size: "4".into(),
+                },
+            ],
+            ..Default::default()
+        };
+
+        let depth = snapshot.depth();
+        assert_eq!(depth.bid_depth_1c, Decimal::new(33, 1));
+        assert_eq!(depth.bid_depth_2c, Decimal::new(66, 1));
+        assert_eq!(depth.bid_depth_5c, Decimal::new(110, 1));
+        assert_eq!(depth.ask_depth_1c, Decimal::new(3, 0));
+        assert_eq!(depth.ask_depth_2c, Decimal::new(6, 0));
+        assert_eq!(depth.ask_depth_5c, Decimal::new(10, 0));
+    }
+
+    #[test]
+    fn decimal_midpoint_spread_and_imbalance_are_exact() {
+        use rust_decimal::Decimal;
+
+        let mut tracker = Tracker::new();
+        let snapshot = tracker.apply_book(BookMessage {
+            asset_id: "token-1".into(),
+            bids: vec![PriceLevel {
+                price: "0.1".into(),
+                size: "0.1".into(),
+            }],
+            asks: vec![PriceLevel {
+                price: "0.3".into(),
+                size: "0.2".into(),
+            }],
+            ..Default::default()
+        });
+        assert_eq!(snapshot.midpoint, "0.2");
+        assert_eq!(snapshot.spread, "0.2");
+        assert_eq!(
+            snapshot.liquidity().imbalance,
+            Decimal::new(1, 0) / Decimal::new(3, 0)
+        );
     }
 
     #[test]

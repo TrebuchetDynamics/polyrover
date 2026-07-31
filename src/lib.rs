@@ -85,3 +85,4 @@ pub mod wallet;
 #[cfg(feature = "public")]
 pub use client::{Client, ClientConfig, ClientHealth};
 pub use error::{Error, Result};
+pub use rust_decimal::Decimal;
