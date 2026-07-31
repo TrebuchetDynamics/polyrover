@@ -118,6 +118,9 @@ async fn client_searches_markets_through_one_public_interface() {
     let request = received.recv().unwrap();
     assert!(request.starts_with("GET /public-search?"));
     assert!(request.contains("q=bitcoin"));
+    assert!(request
+        .to_ascii_lowercase()
+        .contains("user-agent: polyrover/0.2.0"));
     server.join().unwrap();
 }
 

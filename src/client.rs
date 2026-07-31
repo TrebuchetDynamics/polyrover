@@ -70,7 +70,7 @@ impl Client {
         let transport = crate::transport::Client::new(crate::transport::Config {
             base_url: config.gamma_base_url,
             timeout_secs: config.http_timeout_secs,
-            user_agent: "polyrover/0.1".into(),
+            user_agent: format!("polyrover/{}", env!("CARGO_PKG_VERSION")),
             retry: config.http_retry,
             max_concurrent_requests: config.http_max_concurrent_requests,
         })?;

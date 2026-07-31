@@ -40,11 +40,14 @@ need supported authentication, order management, or production trading.
 
 ## Quick start
 
-Install the published CLI from crates.io:
+Install the published v0.1.0 CLI from crates.io:
 
 ```bash
 cargo install polyrover
 ```
+
+This checkout is the v0.2.0 release candidate. Until it is published, use the
+Git dependency shown below for the new SDK-only research APIs.
 
 Find a market, copy one outcome token ID from its `clob_token_ids`, then inspect
 and simulate against its current book:
@@ -171,10 +174,10 @@ async fn main() -> polyrover::Result<()> {
 ```
 
 <details>
-<summary><strong>Current main: price history and event streams</strong></summary>
+<summary><strong>Current v0.2.0 source: price history and event streams</strong></summary>
 
-These APIs are newer than v0.1.0. Use the Git revision until the next crates.io
-release:
+These APIs are newer than published v0.1.0. Use the Git revision until v0.2.0
+is published to crates.io:
 
 ```toml
 [dependencies]
@@ -218,7 +221,7 @@ Polyrover only supplies typed public data.
 </details>
 
 <details>
-<summary><strong>Current main: market-flow context</strong></summary>
+<summary><strong>Current v0.2.0 source: market-flow context</strong></summary>
 
 Feed typed tracked market events into a bounded per-asset window:
 
@@ -245,9 +248,10 @@ or the current-main [endpoint capability matrix](docs/endpoint-capability-matrix
 
 ## Safety and limitations
 
-Polyrover v0.1.0 supports observation, local simulation, reconciliation, and
-pre-trade research. It has no order-submission, cancellation, private-key
-signing, relayer, or bridge-transfer client.
+Published Polyrover v0.1.0 supports observation, local simulation,
+reconciliation, and pre-trade research. The v0.2.0 source adds only public
+research context. Neither surface has an order-submission, cancellation,
+private-key signing, relayer, or bridge-transfer client.
 
 <details>
 <summary><strong>Compile-time feature layers</strong></summary>

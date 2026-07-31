@@ -15,10 +15,14 @@ Taxonomy parity does not imply implementation parity.
 
 | Surface | Method/event | Endpoint/channel | Transport | Auth level | Cargo feature | Status | Rust API | Test |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Gamma | Search, offset/keyset markets, and events | `gamma-api.polymarket.com` | HTTPS | none | `public` | implemented | [`src/api/gamma.rs`](../src/api/gamma.rs) | [`tests/client.rs`](../tests/client.rs) |
+| Gamma | Search, offset/keyset markets, and events | `GET /public-search`, `/markets`, `/markets/keyset`, `/events` | HTTPS | none | `public` | implemented | [`src/api/gamma.rs`](../src/api/gamma.rs) | [`tests/client.rs`](../tests/client.rs) |
+| Gamma taxonomy | Tags, series, sports metadata/types, and teams | `GET /tags`, `/tags/{id}`, `/tags/slug/{slug}`, `/series`, `/series/{id}`, `/sports`, `/sports/market-types`, `/teams` | HTTPS | none | `public` | implemented | [`src/api/gamma.rs`](../src/api/gamma.rs) | [`tests/client.rs`](../tests/client.rs), [`tests/contracts.rs`](../tests/contracts.rs) |
 | CLOB | Books, prices, single/batch price history, token fee rates, and market metadata | `clob.polymarket.com` | HTTPS | none | `public` | implemented | [`src/api/clob.rs`](../src/api/clob.rs) | [`tests/client.rs`](../tests/client.rs) |
+| CLOB batch context | Atomic prices, midpoints, spreads, and last trades | `POST /prices`, `/midpoints`, `/spreads`, `/last-trades-prices` | HTTPS | none | `public` | implemented | [`src/api/clob.rs`](../src/api/clob.rs) | [`tests/client.rs`](../tests/client.rs), [`tests/contracts.rs`](../tests/contracts.rs) |
 | Data API | Positions, paginated closed positions/trades/activity, holders, and filtered leaderboards | `data-api.polymarket.com` | HTTPS | none | `public` | implemented | [`src/api/data.rs`](../src/api/data.rs) | [`tests/client.rs`](../tests/client.rs) |
+| Wallet dossier | Bounded descriptive public-account aggregate | `GET /positions`, `/closed-positions`, `/trades`, `/activity`, `/value`, `/traded` | HTTPS | none | `public` | implemented | [`src/research/wallet_dossier.rs`](../src/research/wallet_dossier.rs) | [`tests/wallet_dossier.rs`](../tests/wallet_dossier.rs), [`tests/client.rs`](../tests/client.rs) |
 | Market WSS | Book/price/trade/tick/lifecycle events | `/ws/market` | WSS | none | `public` | implemented | [`src/streaming/stream_client.rs`](../src/streaming/stream_client.rs) | [`src/streaming/stream_client.rs`](../src/streaming/stream_client.rs) |
+| Market flow | Bounded descriptive per-asset summary | typed `/ws/market` events, local aggregation | WSS + local | none | `public` | implemented | [`src/research/market_flow.rs`](../src/research/market_flow.rs) | [`tests/market_flow.rs`](../tests/market_flow.rs) |
 | Resolution | Arbitrary market result | Gamma + CLOB | HTTPS | none | `public` | implemented | [`src/research/market_results.rs`](../src/research/market_results.rs) | [`tests/market_results.rs`](../tests/market_results.rs) |
 | Crypto resolver | Up/Down 5m windows | Gamma | HTTPS | none | `public` | implemented | [`src/research/market_resolver.rs`](../src/research/market_resolver.rs) | [`src/research/market_resolver.rs`](../src/research/market_resolver.rs) |
 
@@ -37,6 +41,9 @@ Taxonomy parity does not imply implementation parity.
   These are empirical safe sizes, not upstream protocol guarantees.
 - CLOB batch price history accepts at most 20 asset IDs. Polyrover performs one
   atomic request; consumers own splitting, retries across jobs, and persistence.
+- Batch prices, midpoints, spreads, and last trades are also one atomic request.
+  Polyrover validates non-empty token IDs but asserts no unpublished upstream
+  batch maximum; consumers own chunk sizing and persistence.
 - Automatic HTTP retries are bounded to `429` and `425`. A server-provided
   numeric `Retry-After` overrides exponential backoff and is clamped to the
   configured maximum delay. 5xx responses are classified as retriable for the

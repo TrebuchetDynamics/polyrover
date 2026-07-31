@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-07-28
+
+### Added
+
+- Atomic batch CLOB prices, midpoints, spreads, and last-trade reads.
+- Gamma screening filters plus tags, series, sports metadata, market types, and teams.
+- Transparent public wallet dossiers with explicit source/coverage fields.
+- Bounded provenance-aware market-flow summaries over public WSS events.
+
+### Changed
+
+- Streaming liquidity, depth, midpoint, spread, ordering, and zero-size calculations use exact decimal arithmetic.
+- `market_data::Liquidity` and `market_data::Depth` numeric fields changed from `f64` to `rust_decimal::Decimal`.
+
+### Safety
+
+- No signing, order submission, cancellation, wallet connection, relayer, bridge transfer, alert delivery, prediction, or execution capability was added.
+
+## 0.1.0 - 2026-07-27
+
 ### Added
 
 - Gamma keyset pagination through `market_page`, including opaque `after_cursor`/`next_cursor` handling for complete catalogs beyond the offset limit.
