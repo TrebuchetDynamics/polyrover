@@ -48,6 +48,38 @@
       "retrievedAt": "2026-07-28",
       "endpoint": "POST https://clob.polymarket.com/last-trades-prices",
       "containsLiveData": false
+    },
+    {
+      "path": "gamma/tags.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/tags/list-tags",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "GET https://gamma-api.polymarket.com/tags",
+      "containsLiveData": false
+    },
+    {
+      "path": "gamma/series.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/series/list-series",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "GET https://gamma-api.polymarket.com/series",
+      "containsLiveData": false
+    },
+    {
+      "path": "gamma/sports.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/sports/get-sports-metadata-information",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "GET https://gamma-api.polymarket.com/sports",
+      "containsLiveData": false
+    },
+    {
+      "path": "gamma/teams.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/sports/list-teams",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "GET https://gamma-api.polymarket.com/teams",
+      "containsLiveData": false
     }
   ]
 }

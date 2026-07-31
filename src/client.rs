@@ -11,11 +11,12 @@ use crate::{
         Activity, ClosedPosition, Holder, LeaderboardRow, OpenInterest, PortfolioValue, Position,
         Trade,
     },
-    gamma::{self, MarketKeysetParams, MarketParams, SearchParams},
+    gamma::{self, MarketKeysetParams, MarketParams, SearchParams, TaxonomyParams, TeamParams},
     simulation::{self, Request as SimulationRequest, ResultRow as SimulationResult},
     types::{
         ClobBatchPriceHistory, ClobFeeRate, ClobLastTradePrice, ClobOrderBook, ClobPriceHistory,
-        Market, MarketPage, SearchResponse,
+        GammaSeries, GammaTag, Market, MarketPage, SearchResponse, SportMetadata,
+        SportsMarketTypes, Team,
     },
     Result,
 };
@@ -97,6 +98,38 @@ impl Client {
 
     pub async fn market_by_slug(&self, slug: &str) -> Result<Market> {
         self.gamma.market_by_slug(slug).await
+    }
+
+    pub async fn tags(&self, params: &TaxonomyParams) -> Result<Vec<GammaTag>> {
+        self.gamma.tags(params).await
+    }
+
+    pub async fn tag_by_id(&self, id: i64) -> Result<GammaTag> {
+        self.gamma.tag_by_id(id).await
+    }
+
+    pub async fn tag_by_slug(&self, slug: &str) -> Result<GammaTag> {
+        self.gamma.tag_by_slug(slug).await
+    }
+
+    pub async fn series(&self, params: &TaxonomyParams) -> Result<Vec<GammaSeries>> {
+        self.gamma.series(params).await
+    }
+
+    pub async fn series_by_id(&self, id: i64) -> Result<GammaSeries> {
+        self.gamma.series_by_id(id).await
+    }
+
+    pub async fn sports(&self) -> Result<Vec<SportMetadata>> {
+        self.gamma.sports().await
+    }
+
+    pub async fn sports_market_types(&self) -> Result<SportsMarketTypes> {
+        self.gamma.sports_market_types().await
+    }
+
+    pub async fn teams(&self, params: &TeamParams) -> Result<Vec<Team>> {
+        self.gamma.teams(params).await
     }
 
     pub async fn order_book(&self, token_id: &str) -> Result<ClobOrderBook> {

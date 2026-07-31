@@ -181,6 +181,82 @@ pub struct SearchResponse {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct GammaTag {
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub id: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub label: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub slug: String,
+    #[serde(default, rename = "forceShow", deserialize_with = "bool_or_false")]
+    pub force_show: bool,
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct GammaSeries {
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub id: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub ticker: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub slug: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub title: String,
+    #[serde(default, deserialize_with = "bool_or_false")]
+    pub active: bool,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub volume: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub liquidity: String,
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct SportMetadata {
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub sport: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub image: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub resolution: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub ordering: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub tags: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub series: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct SportsMarketTypes {
+    #[serde(default, rename = "marketTypes")]
+    pub market_types: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct Team {
+    #[serde(default, deserialize_with = "int_or_zero")]
+    pub id: i64,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub name: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub league: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub record: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub logo: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub abbreviation: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub alias: String,
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct ClobServerTime {
     #[serde(default)]
     pub timestamp: String,

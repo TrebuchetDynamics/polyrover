@@ -1712,7 +1712,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["series", "get"]),
         extension: false,
         summary: "Series get.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "series.list",
@@ -1726,7 +1726,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["series", "list"]),
         extension: false,
         summary: "Series list.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "settlement.readiness.check",
@@ -1796,7 +1796,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["sports", "list"]),
         extension: false,
         summary: "Sports list.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "sports.marketTypes.list",
@@ -1810,7 +1810,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["sports", "market-types"]),
         extension: false,
         summary: "Sports market types list.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "sports.teams.list",
@@ -1824,7 +1824,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["sports", "teams"]),
         extension: false,
         summary: "Sports teams list.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "stream.market.subscribe",
@@ -1866,7 +1866,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["tags", "get"]),
         extension: false,
         summary: "Tags get.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "tags.list",
@@ -1880,7 +1880,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["tags", "list"]),
         extension: false,
         summary: "Tags list.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "tags.related.list",

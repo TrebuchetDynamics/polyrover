@@ -3,7 +3,10 @@
 use crate::{
     query::escape,
     transport,
-    types::{Event, HealthResponse, Market, MarketPage, SearchResponse},
+    types::{
+        Event, GammaSeries, GammaTag, HealthResponse, Market, MarketPage, SearchResponse,
+        SportMetadata, SportsMarketTypes, Team,
+    },
     Result,
 };
 
@@ -81,6 +84,43 @@ impl Client {
         self.transport
             .get_json(&params.path("/public-search"))
             .await
+    }
+
+    pub async fn tags(&self, params: &TaxonomyParams) -> Result<Vec<GammaTag>> {
+        self.transport.get_json(&params.path("/tags")).await
+    }
+
+    pub async fn tag_by_id(&self, id: i64) -> Result<GammaTag> {
+        self.transport.get_json(&format!("/tags/{id}")).await
+    }
+
+    pub async fn tag_by_slug(&self, slug: &str) -> Result<GammaTag> {
+        if slug.trim().is_empty() {
+            return Err(crate::Error::Invalid("tag slug is required".into()));
+        }
+        self.transport
+            .get_json(&format!("/tags/slug/{}", escape(slug)))
+            .await
+    }
+
+    pub async fn series(&self, params: &TaxonomyParams) -> Result<Vec<GammaSeries>> {
+        self.transport.get_json(&params.path("/series")).await
+    }
+
+    pub async fn series_by_id(&self, id: i64) -> Result<GammaSeries> {
+        self.transport.get_json(&format!("/series/{id}")).await
+    }
+
+    pub async fn sports(&self) -> Result<Vec<SportMetadata>> {
+        self.transport.get_json("/sports").await
+    }
+
+    pub async fn sports_market_types(&self) -> Result<SportsMarketTypes> {
+        self.transport.get_json("/sports/market-types").await
+    }
+
+    pub async fn teams(&self, params: &TeamParams) -> Result<Vec<Team>> {
+        self.transport.get_json(&params.path("/teams")).await
     }
 }
 
@@ -187,6 +227,22 @@ pub struct EventParams {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct TaxonomyParams {
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
+    pub order: String,
+    pub ascending: Option<bool>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct TeamParams {
+    pub page: TaxonomyParams,
+    pub leagues: Vec<String>,
+    pub names: Vec<String>,
+    pub abbreviations: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SearchParams {
     pub q: String,
     pub limit_per_type: Option<u32>,
@@ -264,6 +320,31 @@ impl EventParams {
         q.opt("tag_id", self.tag_id);
         q.list("slug", &self.slug);
         q.finish()
+    }
+}
+
+impl TaxonomyParams {
+    fn path(&self, base: &str) -> String {
+        let mut query = Query::new(base);
+        query.opt("limit", self.limit);
+        query.opt("offset", self.offset);
+        query.opt_str("order", Some(self.order.as_str()));
+        query.opt("ascending", self.ascending);
+        query.finish()
+    }
+}
+
+impl TeamParams {
+    fn path(&self, base: &str) -> String {
+        let mut query = Query::new(base);
+        query.opt("limit", self.page.limit);
+        query.opt("offset", self.page.offset);
+        query.opt_str("order", Some(self.page.order.as_str()));
+        query.opt("ascending", self.page.ascending);
+        query.list("league", &self.leagues);
+        query.list("name", &self.names);
+        query.list("abbreviation", &self.abbreviations);
+        query.finish()
     }
 }
 

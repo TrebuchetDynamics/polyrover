@@ -12,7 +12,7 @@ use chrono::{TimeZone, Utc};
 use polyrover::{
     clob::{BatchMarketRequest, BatchPriceHistoryParams, PriceHistoryParams},
     data::{ActivityParams, ClosedPositionParams, LeaderboardParams, TradeParams},
-    gamma::{MarketKeysetParams, MarketParams, SearchParams},
+    gamma::{MarketKeysetParams, MarketParams, SearchParams, TaxonomyParams, TeamParams},
     simulation::Request,
     stream::{parse_market_event, MarketEvent},
     Client, ClientConfig,
@@ -312,6 +312,121 @@ async fn client_lists_markets_through_one_public_interface() {
     let request = received.recv().unwrap();
     assert!(request.starts_with("GET /markets?"));
     assert!(request.contains("limit=5"));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_gamma_taxonomy() {
+    let page = TaxonomyParams {
+        limit: Some(10),
+        offset: Some(0),
+        ..Default::default()
+    };
+
+    let (gamma_base_url, received, server) = serve_json(r#"[{"id":"7"}]"#);
+    let client = Client::new(ClientConfig {
+        gamma_base_url,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(client.tags(&page).await.unwrap()[0].id, "7");
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /tags?limit=10&offset=0 "));
+    server.join().unwrap();
+
+    let (gamma_base_url, received, server) = serve_json(r#"{"id":"7"}"#);
+    let client = Client::new(ClientConfig {
+        gamma_base_url,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(client.tag_by_id(7).await.unwrap().id, "7");
+    assert!(received.recv().unwrap().starts_with("GET /tags/7 "));
+    server.join().unwrap();
+
+    let (gamma_base_url, received, server) = serve_json(r#"{"slug":"crypto"}"#);
+    let client = Client::new(ClientConfig {
+        gamma_base_url,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(client.tag_by_slug("crypto").await.unwrap().slug, "crypto");
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /tags/slug/crypto "));
+    server.join().unwrap();
+
+    let (gamma_base_url, received, server) = serve_json(r#"[{"id":"12"}]"#);
+    let client = Client::new(ClientConfig {
+        gamma_base_url,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(client.series(&page).await.unwrap()[0].id, "12");
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /series?limit=10&offset=0 "));
+    server.join().unwrap();
+
+    let (gamma_base_url, received, server) = serve_json(r#"{"id":"12"}"#);
+    let client = Client::new(ClientConfig {
+        gamma_base_url,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(client.series_by_id(12).await.unwrap().id, "12");
+    assert!(received.recv().unwrap().starts_with("GET /series/12 "));
+    server.join().unwrap();
+
+    let (gamma_base_url, received, server) = serve_json(r#"[{"sport":"nfl"}]"#);
+    let client = Client::new(ClientConfig {
+        gamma_base_url,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(client.sports().await.unwrap()[0].sport, "nfl");
+    assert!(received.recv().unwrap().starts_with("GET /sports "));
+    server.join().unwrap();
+
+    let (gamma_base_url, received, server) = serve_json(r#"{"marketTypes":["moneyline"]}"#);
+    let client = Client::new(ClientConfig {
+        gamma_base_url,
+        ..Default::default()
+    })
+    .unwrap();
+    assert_eq!(
+        client.sports_market_types().await.unwrap().market_types,
+        ["moneyline"]
+    );
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /sports/market-types "));
+    server.join().unwrap();
+
+    let (gamma_base_url, received, server) = serve_json(r#"[{"id":123}]"#);
+    let client = Client::new(ClientConfig {
+        gamma_base_url,
+        ..Default::default()
+    })
+    .unwrap();
+    let teams = client
+        .teams(&TeamParams {
+            page,
+            leagues: vec!["NFL".into()],
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(teams[0].id, 123);
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /teams?limit=10&offset=0&league=NFL "));
     server.join().unwrap();
 }
 

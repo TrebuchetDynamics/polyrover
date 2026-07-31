@@ -2,7 +2,10 @@
 
 use std::{fs, path::Path};
 
-use polyrover::types::{ClobBatchPriceHistory, ClobLastTradePrice, ClobPriceHistory};
+use polyrover::types::{
+    ClobBatchPriceHistory, ClobLastTradePrice, ClobPriceHistory, GammaSeries, GammaTag,
+    SportMetadata, Team,
+};
 use serde_json::Value;
 
 #[test]
@@ -35,13 +38,29 @@ fn batch_market_context_examples_preserve_decimal_text() {
 }
 
 #[test]
+fn gamma_taxonomy_contract_examples_deserialize() {
+    let tags: Vec<GammaTag> =
+        serde_json::from_str(include_str!("fixtures/gamma/tags.json")).unwrap();
+    let series: Vec<GammaSeries> =
+        serde_json::from_str(include_str!("fixtures/gamma/series.json")).unwrap();
+    let sports: Vec<SportMetadata> =
+        serde_json::from_str(include_str!("fixtures/gamma/sports.json")).unwrap();
+    let teams: Vec<Team> = serde_json::from_str(include_str!("fixtures/gamma/teams.json")).unwrap();
+
+    assert_eq!(tags[0].slug, "crypto");
+    assert_eq!(series[0].volume, "123.45");
+    assert_eq!(sports[0].sport, "nfl");
+    assert_eq!(teams[0].id, 123);
+}
+
+#[test]
 fn every_contract_fixture_has_explicit_provenance() {
     let manifest: Value = serde_json::from_str(include_str!("fixtures/provenance.json")).unwrap();
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     let fixtures = manifest["fixtures"].as_array().unwrap();
 
     assert_eq!(manifest["schemaVersion"], 1);
-    assert_eq!(fixtures.len(), 6);
+    assert_eq!(fixtures.len(), 10);
     for fixture in fixtures {
         let relative = fixture["path"].as_str().unwrap();
         assert!(root.join(relative).is_file(), "missing fixture {relative}");

@@ -2788,11 +2788,17 @@
       ],
       "extension": false,
       "summary": "Series get.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "gamma::Client::series_by_id",
+        "Client::series_by_id"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only public taxonomy read; CLI parity remains planned."
     },
     {
       "id": "series.list",
@@ -2811,11 +2817,17 @@
       ],
       "extension": false,
       "summary": "Series list.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "gamma::Client::series",
+        "Client::series"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only public taxonomy read; CLI parity remains planned."
     },
     {
       "id": "settlement.readiness.check",
@@ -2918,11 +2930,17 @@
       ],
       "extension": false,
       "summary": "Sports list.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "gamma::Client::sports",
+        "Client::sports"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only public taxonomy read; CLI parity remains planned."
     },
     {
       "id": "sports.marketTypes.list",
@@ -2941,11 +2959,17 @@
       ],
       "extension": false,
       "summary": "Sports market types list.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "gamma::Client::sports_market_types",
+        "Client::sports_market_types"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only public taxonomy read; CLI parity remains planned."
     },
     {
       "id": "sports.teams.list",
@@ -2964,11 +2988,17 @@
       ],
       "extension": false,
       "summary": "Sports teams list.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "gamma::Client::teams",
+        "Client::teams"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only public taxonomy read; CLI parity remains planned."
     },
     {
       "id": "stream.market.subscribe",
@@ -3035,11 +3065,19 @@
       ],
       "extension": false,
       "summary": "Tags get.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "gamma::Client::tag_by_id",
+        "gamma::Client::tag_by_slug",
+        "Client::tag_by_id",
+        "Client::tag_by_slug"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only public taxonomy read; CLI parity remains planned."
     },
     {
       "id": "tags.list",
@@ -3058,11 +3096,17 @@
       ],
       "extension": false,
       "summary": "Tags list.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "gamma::Client::tags",
+        "Client::tags"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only public taxonomy read; CLI parity remains planned."
     },
     {
       "id": "tags.related.list",
