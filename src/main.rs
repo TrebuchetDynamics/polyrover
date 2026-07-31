@@ -3,6 +3,7 @@
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use polyrover::{
+    clob::{BatchPriceHistoryParams, PriceHistoryParams},
     gamma, output, paper, simulation, stream, stream_client, Client, ClientConfig, Error, Result,
 };
 use serde_json::json;
@@ -40,6 +41,15 @@ async fn run() -> Result<()> {
         [group, cmd, rest @ ..] if group == "gamma" && cmd == "markets" => {
             gamma_markets(&client, rest).await
         }
+        [group, cmd, rest @ ..] if group == "gamma" && cmd == "market-page" => {
+            gamma_market_page(&client, rest).await
+        }
+        [group, cmd, rest @ ..] if group == "gamma" && cmd == "events" => {
+            gamma_events(&client, rest).await
+        }
+        [group, cmd, rest @ ..] if group == "gamma" && cmd == "event-page" => {
+            gamma_event_page(&client, rest).await
+        }
         [group, cmd, rest @ ..] if group == "clob" && cmd == "fees" => clob_fees(rest),
         [group, cmd, rest @ ..] if group == "clob" && cmd == "book" => {
             clob_book(&client, rest).await
@@ -53,14 +63,32 @@ async fn run() -> Result<()> {
         [group, cmd, rest @ ..] if group == "clob" && cmd == "simulate" => {
             clob_simulate(&client, rest).await
         }
+        [group, cmd, rest @ ..] if group == "clob" && cmd == "price-history" => {
+            clob_price_history(&client, rest).await
+        }
+        [group, cmd, rest @ ..] if group == "clob" && cmd == "batch-price-history" => {
+            clob_batch_price_history(&client, rest).await
+        }
         [group, cmd, rest @ ..] if group == "analytics" && cmd == "positions" => {
             data_positions(&client, rest).await
         }
         [group, cmd, rest @ ..] if group == "analytics" && cmd == "trades" => {
             data_trades(&client, rest).await
         }
+        [group, cmd, rest @ ..] if group == "analytics" && cmd == "closed-positions" => {
+            data_closed_positions(&client, rest).await
+        }
+        [group, cmd, rest @ ..] if group == "analytics" && cmd == "activity" => {
+            data_activity(&client, rest).await
+        }
         [group, cmd, rest @ ..] if group == "analytics" && cmd == "leaderboard" => {
             data_leaderboard(&client, rest).await
+        }
+        [group, cmd, rest @ ..] if group == "analytics" && cmd == "builder-leaderboard" => {
+            data_builder_leaderboard(&client, rest).await
+        }
+        [group, cmd, rest @ ..] if group == "analytics" && cmd == "builder-volume" => {
+            data_builder_volume(&client, rest).await
         }
         [group, cmd, rest @ ..] if group == "stream" && cmd == "watch" => stream_watch(rest).await,
         [group, cmd, rest @ ..] if group == "sim" && cmd == "reset" => sim_reset(rest),
@@ -90,15 +118,24 @@ async fn gamma_search(client: &Client, args: &[String]) -> Result<()> {
 }
 
 async fn gamma_markets(client: &Client, args: &[String]) -> Result<()> {
-    let limit = flag(args, "--limit").and_then(|v| v.parse().ok());
+    print_success("gamma markets", client.markets(&market_params(args)).await?)
+}
+
+async fn gamma_market_page(client: &Client, args: &[String]) -> Result<()> {
     print_success(
-        "gamma markets",
-        client
-            .markets(&gamma::MarketParams {
-                limit,
-                ..Default::default()
-            })
-            .await?,
+        "gamma market-page",
+        client.market_page(&market_keyset_params(args)).await?,
+    )
+}
+
+async fn gamma_events(client: &Client, args: &[String]) -> Result<()> {
+    print_success("gamma events", client.events(&event_params(args)).await?)
+}
+
+async fn gamma_event_page(client: &Client, args: &[String]) -> Result<()> {
+    print_success(
+        "gamma event-page",
+        client.event_page(&event_keyset_params(args)).await?,
     )
 }
 
@@ -167,6 +204,273 @@ async fn clob_simulate(client: &Client, args: &[String]) -> Result<()> {
     print_success("clob simulate", result)
 }
 
+fn clob_history_params(args: &[String]) -> PriceHistoryParams {
+    PriceHistoryParams {
+        token_id: flag(args, "--token-id").unwrap_or_default(),
+        start_ts: flag(args, "--start-ts").and_then(|v| v.parse().ok()),
+        end_ts: flag(args, "--end-ts").and_then(|v| v.parse().ok()),
+        interval: flag(args, "--interval"),
+        fidelity: flag(args, "--fidelity").and_then(|v| v.parse().ok()),
+    }
+}
+
+fn batch_history_params(args: &[String]) -> BatchPriceHistoryParams {
+    BatchPriceHistoryParams {
+        markets: flag_values(args, "--token-id"),
+        start_ts: flag(args, "--start-ts").and_then(|v| v.parse().ok()),
+        end_ts: flag(args, "--end-ts").and_then(|v| v.parse().ok()),
+        interval: flag(args, "--interval"),
+        fidelity: flag(args, "--fidelity").and_then(|v| v.parse().ok()),
+    }
+}
+
+async fn clob_price_history(client: &Client, args: &[String]) -> Result<()> {
+    print_success(
+        "clob price-history",
+        client.price_history(&clob_history_params(args)).await?,
+    )
+}
+
+async fn clob_batch_price_history(client: &Client, args: &[String]) -> Result<()> {
+    print_success(
+        "clob batch-price-history",
+        client
+            .batch_price_history(&batch_history_params(args))
+            .await?,
+    )
+}
+
+fn bool_flag(args: &[String], name: &str) -> Option<bool> {
+    flag(args, name).and_then(|value| value.parse().ok())
+}
+
+fn integer_values(args: &[String], name: &str) -> Vec<i64> {
+    flag_values(args, name)
+        .into_iter()
+        .filter_map(|value| value.parse().ok())
+        .collect()
+}
+
+fn market_params(args: &[String]) -> gamma::MarketParams {
+    gamma::MarketParams {
+        limit: flag(args, "--limit").and_then(|v| v.parse().ok()),
+        offset: flag(args, "--offset").and_then(|v| v.parse().ok()),
+        order: flag(args, "--order"),
+        ascending: bool_flag(args, "--ascending"),
+        ids: integer_values(args, "--id"),
+        slug: flag_values(args, "--slug"),
+        condition_ids: flag_values(args, "--condition-id"),
+        clob_token_ids: flag_values(args, "--clob-token-id"),
+        market_maker_address: flag(args, "--market-maker-address").unwrap_or_default(),
+        active: bool_flag(args, "--active"),
+        closed: bool_flag(args, "--closed"),
+        tag_id: flag(args, "--tag-id").and_then(|v| v.parse().ok()),
+        liquidity_num_min: flag(args, "--liquidity-min").and_then(|v| v.parse().ok()),
+        liquidity_num_max: flag(args, "--liquidity-max").and_then(|v| v.parse().ok()),
+        volume_num_min: flag(args, "--volume-min").and_then(|v| v.parse().ok()),
+        volume_num_max: flag(args, "--volume-max").and_then(|v| v.parse().ok()),
+        start_date_min: flag(args, "--start-date-min").unwrap_or_default(),
+        start_date_max: flag(args, "--start-date-max").unwrap_or_default(),
+        end_date_min: flag(args, "--end-date-min").unwrap_or_default(),
+        end_date_max: flag(args, "--end-date-max").unwrap_or_default(),
+        related_tags: bool_flag(args, "--related-tags"),
+        cyom: bool_flag(args, "--cyom"),
+        uma_resolution_status: flag(args, "--uma-resolution-status").unwrap_or_default(),
+        game_id: flag(args, "--game-id").unwrap_or_default(),
+        rewards_min_size: flag(args, "--rewards-min-size").and_then(|v| v.parse().ok()),
+        question_ids: flag_values(args, "--question-id"),
+        include_tag: bool_flag(args, "--include-tag"),
+        sports_market_types: flag_values(args, "--sports-market-type"),
+    }
+}
+
+fn market_keyset_params(args: &[String]) -> gamma::MarketKeysetParams {
+    gamma::MarketKeysetParams {
+        limit: flag(args, "--limit").and_then(|v| v.parse().ok()),
+        after_cursor: flag(args, "--after-cursor").unwrap_or_default(),
+        order: flag(args, "--order"),
+        ascending: bool_flag(args, "--ascending"),
+        ids: integer_values(args, "--id"),
+        slug: flag_values(args, "--slug"),
+        decimalized: bool_flag(args, "--decimalized"),
+        condition_ids: flag_values(args, "--condition-id"),
+        clob_token_ids: flag_values(args, "--clob-token-id"),
+        question_ids: flag_values(args, "--question-id"),
+        market_maker_address: flag(args, "--market-maker-address").unwrap_or_default(),
+        active: bool_flag(args, "--active"),
+        closed: bool_flag(args, "--closed"),
+        tag_id: None,
+        tag_ids: integer_values(args, "--tag-id"),
+        liquidity_num_min: flag(args, "--liquidity-min").and_then(|v| v.parse().ok()),
+        liquidity_num_max: flag(args, "--liquidity-max").and_then(|v| v.parse().ok()),
+        volume_num_min: flag(args, "--volume-min").and_then(|v| v.parse().ok()),
+        volume_num_max: flag(args, "--volume-max").and_then(|v| v.parse().ok()),
+        start_date_min: flag(args, "--start-date-min").unwrap_or_default(),
+        start_date_max: flag(args, "--start-date-max").unwrap_or_default(),
+        end_date_min: flag(args, "--end-date-min").unwrap_or_default(),
+        end_date_max: flag(args, "--end-date-max").unwrap_or_default(),
+        related_tags: bool_flag(args, "--related-tags"),
+        tag_match: flag(args, "--tag-match").unwrap_or_default(),
+        cyom: bool_flag(args, "--cyom"),
+        rfq_enabled: bool_flag(args, "--rfq-enabled"),
+        uma_resolution_status: flag(args, "--uma-resolution-status").unwrap_or_default(),
+        game_id: flag(args, "--game-id").unwrap_or_default(),
+        include_tag: bool_flag(args, "--include-tag"),
+        locale: flag(args, "--locale").unwrap_or_default(),
+        sports_market_types: flag_values(args, "--sports-market-type"),
+    }
+}
+
+fn event_params(args: &[String]) -> gamma::EventParams {
+    gamma::EventParams {
+        limit: flag(args, "--limit").and_then(|v| v.parse().ok()),
+        offset: flag(args, "--offset").and_then(|v| v.parse().ok()),
+        order: flag(args, "--order"),
+        ascending: bool_flag(args, "--ascending"),
+        ids: integer_values(args, "--id"),
+        slug: flag_values(args, "--slug"),
+        active: bool_flag(args, "--active"),
+        closed: bool_flag(args, "--closed"),
+        archived: bool_flag(args, "--archived"),
+        tag_id: flag(args, "--tag-id").and_then(|v| v.parse().ok()),
+        exclude_tag_ids: integer_values(args, "--exclude-tag-id"),
+        tag_slug: flag(args, "--tag-slug").unwrap_or_default(),
+        related_tags: bool_flag(args, "--related-tags"),
+        featured: bool_flag(args, "--featured"),
+        cyom: bool_flag(args, "--cyom"),
+        include_chat: bool_flag(args, "--include-chat"),
+        include_template: bool_flag(args, "--include-template"),
+        recurrence: flag(args, "--recurrence").unwrap_or_default(),
+        liquidity_min: flag(args, "--liquidity-min").and_then(|v| v.parse().ok()),
+        liquidity_max: flag(args, "--liquidity-max").and_then(|v| v.parse().ok()),
+        volume_min: flag(args, "--volume-min").and_then(|v| v.parse().ok()),
+        volume_max: flag(args, "--volume-max").and_then(|v| v.parse().ok()),
+        start_date_min: flag(args, "--start-date-min").unwrap_or_default(),
+        start_date_max: flag(args, "--start-date-max").unwrap_or_default(),
+        end_date_min: flag(args, "--end-date-min").unwrap_or_default(),
+        end_date_max: flag(args, "--end-date-max").unwrap_or_default(),
+    }
+}
+
+fn event_keyset_params(args: &[String]) -> gamma::EventKeysetParams {
+    gamma::EventKeysetParams {
+        limit: flag(args, "--limit").and_then(|v| v.parse().ok()),
+        after_cursor: flag(args, "--after-cursor").unwrap_or_default(),
+        order: flag(args, "--order"),
+        ascending: bool_flag(args, "--ascending"),
+        ids: integer_values(args, "--id"),
+        slug: flag_values(args, "--slug"),
+        closed: bool_flag(args, "--closed"),
+        live: bool_flag(args, "--live"),
+        featured: bool_flag(args, "--featured"),
+        cyom: bool_flag(args, "--cyom"),
+        title_search: flag(args, "--title-search").unwrap_or_default(),
+        liquidity_min: flag(args, "--liquidity-min").and_then(|v| v.parse().ok()),
+        liquidity_max: flag(args, "--liquidity-max").and_then(|v| v.parse().ok()),
+        volume_min: flag(args, "--volume-min").and_then(|v| v.parse().ok()),
+        volume_max: flag(args, "--volume-max").and_then(|v| v.parse().ok()),
+        start_date_min: flag(args, "--start-date-min").unwrap_or_default(),
+        start_date_max: flag(args, "--start-date-max").unwrap_or_default(),
+        end_date_min: flag(args, "--end-date-min").unwrap_or_default(),
+        end_date_max: flag(args, "--end-date-max").unwrap_or_default(),
+        start_time_min: flag(args, "--start-time-min").unwrap_or_default(),
+        start_time_max: flag(args, "--start-time-max").unwrap_or_default(),
+        tag_ids: integer_values(args, "--tag-id"),
+        tag_slug: flag(args, "--tag-slug").unwrap_or_default(),
+        exclude_tag_ids: integer_values(args, "--exclude-tag-id"),
+        related_tags: bool_flag(args, "--related-tags"),
+        tag_match: flag(args, "--tag-match").unwrap_or_default(),
+        series_ids: integer_values(args, "--series-id"),
+        game_ids: integer_values(args, "--game-id"),
+        event_date: flag(args, "--event-date").unwrap_or_default(),
+        event_week: flag(args, "--event-week").and_then(|v| v.parse().ok()),
+        featured_order: bool_flag(args, "--featured-order"),
+        recurrence: flag(args, "--recurrence").unwrap_or_default(),
+        created_by: flag_values(args, "--created-by"),
+        parent_event_id: flag(args, "--parent-event-id").and_then(|v| v.parse().ok()),
+        include_children: bool_flag(args, "--include-children"),
+        partner_slug: flag(args, "--partner-slug").unwrap_or_default(),
+        include_chat: bool_flag(args, "--include-chat"),
+        include_template: bool_flag(args, "--include-template"),
+        include_best_lines: bool_flag(args, "--include-best-lines"),
+        locale: flag(args, "--locale").unwrap_or_default(),
+    }
+}
+
+fn trade_params(args: &[String]) -> polyrover::data::TradeParams {
+    polyrover::data::TradeParams {
+        user: flag(args, "--user").unwrap_or_default(),
+        markets: flag_values(args, "--market"),
+        event_ids: flag_values(args, "--event-id")
+            .into_iter()
+            .filter_map(|v| v.parse().ok())
+            .collect(),
+        side: flag(args, "--side").unwrap_or_default(),
+        start: flag(args, "--start").and_then(|v| v.parse().ok()),
+        end: flag(args, "--end").and_then(|v| v.parse().ok()),
+        taker_only: bool_flag(args, "--taker-only"),
+        filter_type: flag(args, "--filter-type").unwrap_or_default(),
+        filter_amount: flag(args, "--filter-amount").unwrap_or_default(),
+        limit: flag(args, "--limit").and_then(|v| v.parse().ok()),
+        offset: flag(args, "--offset").and_then(|v| v.parse().ok()),
+    }
+}
+
+fn closed_position_params(args: &[String]) -> polyrover::data::ClosedPositionParams {
+    polyrover::data::ClosedPositionParams {
+        user: flag(args, "--user").unwrap_or_default(),
+        markets: flag_values(args, "--market"),
+        title: flag(args, "--title").unwrap_or_default(),
+        event_ids: flag_values(args, "--event-id")
+            .into_iter()
+            .filter_map(|v| v.parse().ok())
+            .collect(),
+        limit: flag(args, "--limit").and_then(|v| v.parse().ok()),
+        offset: flag(args, "--offset").and_then(|v| v.parse().ok()),
+        sort_by: flag(args, "--sort-by").unwrap_or_default(),
+        sort_direction: flag(args, "--sort-direction").unwrap_or_default(),
+    }
+}
+
+fn activity_params(args: &[String]) -> polyrover::data::ActivityParams {
+    polyrover::data::ActivityParams {
+        user: flag(args, "--user").unwrap_or_default(),
+        markets: flag_values(args, "--market"),
+        event_ids: flag_values(args, "--event-id")
+            .into_iter()
+            .filter_map(|v| v.parse().ok())
+            .collect(),
+        activity_types: flag_values(args, "--type"),
+        side: flag(args, "--side").unwrap_or_default(),
+        start: flag(args, "--start").and_then(|v| v.parse().ok()),
+        end: flag(args, "--end").and_then(|v| v.parse().ok()),
+        sort_by: flag(args, "--sort-by").unwrap_or_default(),
+        sort_direction: flag(args, "--sort-direction").unwrap_or_default(),
+        limit: flag(args, "--limit").and_then(|v| v.parse().ok()),
+        offset: flag(args, "--offset").and_then(|v| v.parse().ok()),
+    }
+}
+
+fn builder_leaderboard_params(args: &[String]) -> polyrover::data::BuilderLeaderboardParams {
+    polyrover::data::BuilderLeaderboardParams {
+        time_period: flag(args, "--time-period").unwrap_or_default(),
+        limit: flag(args, "--limit").and_then(|v| v.parse().ok()),
+        offset: flag(args, "--offset").and_then(|v| v.parse().ok()),
+    }
+}
+
+fn leaderboard_params(args: &[String]) -> polyrover::data::LeaderboardParams {
+    polyrover::data::LeaderboardParams {
+        category: flag(args, "--category").unwrap_or_default(),
+        time_period: flag(args, "--time-period").unwrap_or_default(),
+        order_by: flag(args, "--order-by").unwrap_or_default(),
+        limit: flag(args, "--limit").and_then(|v| v.parse().ok()),
+        offset: flag(args, "--offset").and_then(|v| v.parse().ok()),
+        user: flag(args, "--user").unwrap_or_default(),
+        user_name: flag(args, "--user-name").unwrap_or_default(),
+    }
+}
+
 async fn data_positions(client: &Client, args: &[String]) -> Result<()> {
     let user = flag(args, "--user").unwrap_or_default();
     let limit = flag(args, "--limit")
@@ -179,20 +483,54 @@ async fn data_positions(client: &Client, args: &[String]) -> Result<()> {
 }
 
 async fn data_trades(client: &Client, args: &[String]) -> Result<()> {
-    let user = flag(args, "--user").unwrap_or_default();
-    let limit = flag(args, "--limit")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(20);
-    print_success("analytics trades", client.trades(&user, limit).await?)
+    print_success(
+        "analytics trades",
+        client.trades_with(&trade_params(args)).await?,
+    )
+}
+
+async fn data_closed_positions(client: &Client, args: &[String]) -> Result<()> {
+    print_success(
+        "analytics closed-positions",
+        client
+            .closed_positions_with(&closed_position_params(args))
+            .await?,
+    )
+}
+
+async fn data_activity(client: &Client, args: &[String]) -> Result<()> {
+    print_success(
+        "analytics activity",
+        client.activity_with(&activity_params(args)).await?,
+    )
 }
 
 async fn data_leaderboard(client: &Client, args: &[String]) -> Result<()> {
-    let limit = flag(args, "--limit")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(20);
     print_success(
         "analytics leaderboard",
-        client.trader_leaderboard(limit).await?,
+        client
+            .trader_leaderboard_with(&leaderboard_params(args))
+            .await?,
+    )
+}
+
+async fn data_builder_leaderboard(client: &Client, args: &[String]) -> Result<()> {
+    print_success(
+        "analytics builder-leaderboard",
+        client
+            .builder_leaderboard(&builder_leaderboard_params(args))
+            .await?,
+    )
+}
+
+async fn data_builder_volume(client: &Client, args: &[String]) -> Result<()> {
+    print_success(
+        "analytics builder-volume",
+        client
+            .builder_volume(&polyrover::data::BuilderVolumeParams {
+                time_period: flag(args, "--time-period").unwrap_or_default(),
+            })
+            .await?,
     )
 }
 
@@ -282,7 +620,7 @@ fn print_success<T: serde::Serialize>(command: &str, data: T) -> Result<()> {
 }
 
 fn print_help() {
-    println!("polyrover async Polymarket CLI\n\nUsage: polyrover <command> [options]\n\nCommands:\n  Public data:\n    ping                       Check API health\n    gamma search               Search Gamma markets, events, and profiles\n    gamma markets              List Gamma markets\n    clob book                  Fetch an order book\n    clob price                 Fetch a side price\n    clob fee-rate              Fetch a token's base fee in bps\n    clob fees                  Show order types and the documented fee schedule\n    clob simulate              Estimate a fill, optionally including taker fees\n    analytics positions        Fetch wallet positions\n    analytics trades           Fetch wallet trades\n    analytics leaderboard      Fetch the trader leaderboard\n\n  Streaming:\n    stream watch               Watch public market events\n\n  Local simulation:\n    sim reset                  Create a fresh paper state\n    sim buy                    Apply a local paper buy\n    sim sell                   Apply a local paper sell\n\nGlobal options:\n  --json        Print the versioned JSON envelope\n  -h, --help    Show help\n\nRun `polyrover help <command>` for command-specific usage and examples.");
+    println!("polyrover async Polymarket CLI\n\nUsage: polyrover <command> [options]\n\nCommands:\n  Public data:\n    ping                       Check API health\n    gamma search               Search Gamma markets, events, and profiles\n    gamma markets              List Gamma markets\n    gamma market-page          Fetch one keyset-paginated market page\n    gamma events               List Gamma events\n    gamma event-page           Fetch one keyset-paginated event page\n    clob book                  Fetch an order book\n    clob price                 Fetch a side price\n    clob fee-rate              Fetch a token's base fee in bps\n    clob fees                  Show order types and the documented fee schedule\n    clob simulate              Estimate a fill, optionally including taker fees\n    clob price-history         Fetch one token's historical price series\n    clob batch-price-history   Fetch up to 20 historical price series\n    analytics positions        Fetch wallet positions\n    analytics trades           Fetch trades\n    analytics closed-positions Fetch wallet closed positions\n    analytics activity         Fetch wallet activity\n    analytics leaderboard      Fetch the trader leaderboard\n    analytics builder-leaderboard Fetch the aggregated builder leaderboard\n    analytics builder-volume   Fetch daily builder volume history      Fetch the trader leaderboard\n\n  Streaming:\n    stream watch               Watch public market events\n\n  Local simulation:\n    sim reset                  Create a fresh paper state\n    sim buy                    Apply a local paper buy\n    sim sell                   Apply a local paper sell\n\nGlobal options:\n  --json        Print the versioned JSON envelope\n  -h, --help    Show help\n\nRun `polyrover help <command>` for command-specific usage and examples.");
 }
 
 fn print_command_help(command: &[String]) -> Result<()> {
@@ -290,15 +628,15 @@ fn print_command_help(command: &[String]) -> Result<()> {
         let details = match group.as_str() {
             "gamma" => Some((
                 "Query public Gamma discovery APIs.",
-                "  search     Search markets, events, and profiles\n  markets    List markets",
+                "  search         Search markets, events, and profiles\n  markets        List offset-paginated markets\n  market-page    Fetch one keyset-paginated market page\n  events         List offset-paginated events\n  event-page     Fetch one keyset-paginated event page",
             )),
             "clob" => Some((
                 "Read public CLOB data, inspect fees and order types, and estimate fills.",
-                "  book        Fetch an order book\n  price       Fetch a side price\n  fee-rate    Fetch a token's base fee in bps\n  fees        Show the documented fee schedule and order types\n  simulate    Estimate a fill, optionally including taker fees",
+                "  book        Fetch an order book\n  price       Fetch a side price\n  fee-rate    Fetch a token's base fee in bps\n  fees                   Show the documented fee schedule and order types\n  simulate               Estimate a fill, optionally including taker fees\n  price-history          Fetch one token's historical price series\n  batch-price-history    Fetch up to 20 historical price series",
             )),
             "analytics" => Some((
                 "Read public wallet and leaderboard data.",
-                "  positions      Fetch wallet positions\n  trades         Fetch wallet trades\n  leaderboard    Fetch the trader leaderboard",
+                "  positions           Fetch wallet positions\n  trades              Fetch trades\n  closed-positions    Fetch wallet closed positions\n  activity            Fetch wallet activity\n  leaderboard         Fetch the trader leaderboard\n  builder-leaderboard Fetch the aggregated builder leaderboard\n  builder-volume      Fetch daily builder volume history",
             )),
             "stream" => Some((
                 "Read public market WebSocket events.",
@@ -330,10 +668,28 @@ fn print_command_help(command: &[String]) -> Result<()> {
             "polyrover gamma search --query \"bitcoin\" --limit 3 --json",
         ),
         [group, command] if group == "gamma" && command == "markets" => (
-            "List Gamma markets.",
-            "gamma markets [--limit <n>] [--json]",
-            "  --limit <n>    Maximum results\n",
-            "polyrover gamma markets --limit 3 --json",
+            "Fetch one offset-paginated Gamma market request.",
+            "gamma markets [--limit <n>] [--offset <n>] [--active <bool>] [--closed <bool>] [--start-date-min <iso>] [--start-date-max <iso>] [--end-date-min <iso>] [--end-date-max <iso>] [--json]",
+            "  --limit/--offset <n>             Page controls\n  --order <field> --ascending <bool>  Sort controls\n  --id/--slug/--condition-id/--clob-token-id/--question-id <id>  Repeatable identifiers\n  --market-maker-address <address>    Maker filter\n  --active/--closed/--cyom <bool>     Status filters\n  --tag-id <id>                       Tag filter\n  --liquidity-min/--liquidity-max <n>  Liquidity bounds\n  --volume-min/--volume-max <n>       Volume bounds\n  --start-date-min/--start-date-max <iso>  Start bounds\n  --end-date-min/--end-date-max <iso>  End bounds\n  --uma-resolution-status <status>    UMA status filter\n  --game-id <id>                      Game filter\n  --rewards-min-size <n>              Reward-size floor\n  --related-tags/--include-tag <bool>  Tag expansion\n  --sports-market-type <type>         Repeatable sports type\n",
+            "polyrover gamma markets --closed true --limit 100 --offset 0 --json",
+        ),
+        [group, command] if group == "gamma" && command == "market-page" => (
+            "Fetch one keyset-paginated Gamma market request; copy next_cursor unchanged.",
+            "gamma market-page [--limit <n>] [--after-cursor <cursor>] [--active <bool>] [--closed <bool>] [--start-date-min <iso>] [--start-date-max <iso>] [--end-date-min <iso>] [--end-date-max <iso>] [--json]",
+            "  --limit <n>                        Maximum 1000\n  --after-cursor <cursor>             Opaque prior next_cursor\n  --order <field> --ascending <bool>  Sort controls\n  --id/--slug/--condition-id/--clob-token-id/--question-id <id>  Repeatable identifiers\n  --market-maker-address <address>    Maker filter\n  --active/--closed/--decimalized <bool>  Market filters\n  --tag-id <id> --tag-match <mode>    Tag filters\n  --liquidity-min/--liquidity-max <n>  Liquidity bounds\n  --volume-min/--volume-max <n>       Volume bounds\n  --start-date-min/--start-date-max <iso>  Start bounds\n  --end-date-min/--end-date-max <iso>  End bounds\n  --cyom/--rfq-enabled <bool>         Type filters\n  --uma-resolution-status <status>    UMA status filter\n  --game-id <id> --locale <locale>    Game and locale filters\n  --related-tags/--include-tag <bool>  Tag expansion\n  --sports-market-type <type>         Repeatable sports type\n",
+            "polyrover gamma market-page --closed true --limit 100 --after-cursor CURSOR --json",
+        ),
+        [group, command] if group == "gamma" && command == "events" => (
+            "Fetch one offset-paginated Gamma event request.",
+            "gamma events [--limit <n>] [--offset <n>] [--closed <bool>] [--archived <bool>] [--start-date-min <iso>] [--start-date-max <iso>] [--end-date-min <iso>] [--end-date-max <iso>] [--json]",
+            "  --limit/--offset <n>             Page controls\n  --order <field> --ascending <bool>  Sort controls\n  --id <id> --slug <slug>             Repeatable identifiers\n  --active/--closed/--archived/--featured/--cyom <bool>  Status filters\n  --tag-id <id> --exclude-tag-id <id> --tag-slug <slug>  Tag filters\n  --related-tags/--include-chat/--include-template <bool>  Expansions\n  --recurrence <value>                Recurrence filter\n  --liquidity-min/--liquidity-max <n>  Liquidity bounds\n  --volume-min/--volume-max <n>       Volume bounds\n  --start-date-min/--start-date-max <iso>  Start bounds\n  --end-date-min/--end-date-max <iso>  End bounds\n",
+            "polyrover gamma events --closed true --limit 100 --offset 0 --json",
+        ),
+        [group, command] if group == "gamma" && command == "event-page" => (
+            "Fetch one keyset-paginated Gamma event request; copy next_cursor unchanged.",
+            "gamma event-page [--limit <n>] [--after-cursor <cursor>] [--closed <bool>] [--live <bool>] [--start-date-min <iso>] [--start-date-max <iso>] [--end-date-min <iso>] [--end-date-max <iso>] [--json]",
+            "  --limit <n>                        Maximum 500\n  --after-cursor <cursor>             Opaque prior next_cursor\n  --order <field> --ascending <bool>  Sort controls\n  --id <id> --slug <slug>             Repeatable identifiers\n  --closed/--live/--featured/--cyom <bool>  Status filters\n  --title-search <text>               Title filter\n  --liquidity-min/--liquidity-max <n>  Liquidity bounds\n  --volume-min/--volume-max <n>       Volume bounds\n  --start-date-min/--start-date-max <iso>  Start-date bounds\n  --end-date-min/--end-date-max <iso>  End-date bounds\n  --start-time-min/--start-time-max <iso>  Start-time bounds\n  --tag-id/--exclude-tag-id/--series-id/--game-id <id>  Repeatable IDs\n  --tag-slug/--tag-match <value>      Tag filters\n  --related-tags <bool>               Related-tag expansion\n  --event-date <iso> --event-week <n> Event filters\n  --featured-order <bool> --recurrence <value>  Ordering/recurrence\n  --created-by <id> --parent-event-id <id> --include-children <bool>  Hierarchy\n  --partner-slug <slug> --locale <locale>  Partner/locale filters\n  --include-chat/--include-template/--include-best-lines <bool>  Expansions\n",
+            "polyrover gamma event-page --closed true --limit 100 --after-cursor CURSOR --json",
         ),
         [group, command] if group == "clob" && command == "book" => (
             "Fetch a token's CLOB order book.",
@@ -365,6 +721,18 @@ fn print_command_help(command: &[String]) -> Result<()> {
             "  --token <id>          CLOB token ID (required; --token-id also accepted)\n  --amount <n>         Amount to simulate (required)\n  --side <side>        buy or sell (default: buy)\n  --limit-price <p>    Optional price limit\n  --fee-category <c>  crypto|sports|finance|politics|economics|culture|weather|other|mentions|tech|geopolitics\n",
             "polyrover clob simulate --token TOKEN_ID --amount 100 --fee-category crypto --json",
         ),
+        [group, command] if group == "clob" && command == "price-history" => (
+            "Fetch one bounded historical price request.",
+            "clob price-history --token-id <id> [--start-ts <unix>] [--end-ts <unix>] [--interval max|all|1m|1w|1d|6h|1h] [--fidelity <minutes>] [--json]",
+            "  --token-id <id>       CLOB token ID (required)\n  --start-ts <unix>     Inclusive start time\n  --end-ts <unix>       Inclusive end time\n  --interval <value>    max, all, 1m, 1w, 1d, 6h, or 1h\n  --fidelity <minutes>  Sampling fidelity\n",
+            "polyrover clob price-history --token-id TOKEN_ID --interval 1d --fidelity 5 --json",
+        ),
+        [group, command] if group == "clob" && command == "batch-price-history" => (
+            "Fetch one bounded historical price request for at most 20 asset IDs.",
+            "clob batch-price-history --token-id <id>... [--start-ts <unix>] [--end-ts <unix>] [--interval max|all|1m|1w|1d|6h|1h] [--fidelity <minutes>] [--json]",
+            "  --token-id <id>       CLOB token ID; repeat 1 to 20 times\n  --start-ts <unix>     Inclusive start time\n  --end-ts <unix>       Inclusive end time\n  --interval <value>    max, all, 1m, 1w, 1d, 6h, or 1h\n  --fidelity <minutes>  Sampling fidelity\n",
+            "polyrover clob batch-price-history --token-id TOKEN_1 --token-id TOKEN_2 --interval 1d --json",
+        ),
         [group, command] if group == "analytics" && command == "positions" => (
             "Fetch a wallet's current positions.",
             "analytics positions --user <wallet> [--limit <n>] [--json]",
@@ -372,16 +740,40 @@ fn print_command_help(command: &[String]) -> Result<()> {
             "polyrover analytics positions --user 0x1234 --limit 10 --json",
         ),
         [group, command] if group == "analytics" && command == "trades" => (
-            "Fetch a wallet's trades.",
-            "analytics trades --user <wallet> [--limit <n>] [--json]",
-            "  --user <wallet>    Wallet address (required)\n  --limit <n>        Maximum results (default: 20)\n",
-            "polyrover analytics trades --user 0x1234 --limit 10 --json",
+            "Fetch one bounded trade request. Omit --start for the recent default window; --start 1 extends only user-scoped available history.",
+            "analytics trades [--user <wallet>] [--market <condition>...] [--event-id <id>...] [--side BUY|SELL] [--start <unix>] [--end <unix>] [--taker-only <bool>] [--filter-type CASH|TOKENS] [--filter-amount <n>] [--limit <n>] [--offset <n>] [--json]",
+            "  --user <wallet>         Public wallet filter\n  --market <condition>    Repeatable market filter\n  --event-id <id>         Repeatable event filter\n  --side <side>           BUY or SELL\n  --start/--end <unix>    Time window\n  --taker-only <bool>     Taker filter\n  --filter-type <type>    CASH or TOKENS\n  --filter-amount <n>     Amount threshold\n  --limit/--offset <n>    One page, maximum 10000 each\n",
+            "polyrover analytics trades --user 0x1234 --start 1 --limit 100 --offset 0 --json",
+        ),
+        [group, command] if group == "analytics" && command == "closed-positions" => (
+            "Fetch one bounded closed-position request.",
+            "analytics closed-positions --user <wallet> [--market <condition>...] [--event-id <id>...] [--title <text>] [--sort-by <field>] [--sort-direction ASC|DESC] [--limit <n>] [--offset <n>] [--json]",
+            "  --user <wallet>         Wallet address (required)\n  --market <condition>    Repeatable market filter\n  --event-id <id>         Repeatable event filter\n  --title <text>          Title filter\n  --sort-by <field>       Sort field\n  --sort-direction <dir>  ASC or DESC\n  --limit/--offset <n>    Page controls\n",
+            "polyrover analytics closed-positions --user 0x1234 --limit 100 --offset 0 --json",
+        ),
+        [group, command] if group == "analytics" && command == "activity" => (
+            "Fetch one bounded activity request; offsets above 5000 require caller-managed time windows.",
+            "analytics activity --user <wallet> [--market <condition>...] [--event-id <id>...] [--type <type>...] [--side BUY|SELL] [--start <unix>] [--end <unix>] [--sort-by <field>] [--sort-direction ASC|DESC] [--limit <n>] [--offset <n>] [--json]",
+            "  --user <wallet>         Wallet address (required)\n  --market <condition>    Repeatable market filter\n  --event-id <id>         Repeatable event filter\n  --type <type>           Repeatable activity type\n  --side <side>           BUY or SELL\n  --start/--end <unix>    Time window\n  --sort-by <field>       Sort field\n  --sort-direction <dir>  ASC or DESC\n  --limit <n>             Maximum 500\n  --offset <n>            Maximum 5000\n",
+            "polyrover analytics activity --user 0x1234 --start 1 --end 100 --limit 100 --json",
         ),
         [group, command] if group == "analytics" && command == "leaderboard" => (
-            "Fetch the trader leaderboard.",
-            "analytics leaderboard [--limit <n>] [--json]",
-            "  --limit <n>    Maximum results (default: 20)\n",
-            "polyrover analytics leaderboard --limit 10 --json",
+            "Fetch one bounded trader-leaderboard request.",
+            "analytics leaderboard [--category <category>] [--time-period DAY|WEEK|MONTH|ALL] [--order-by <field>] [--user <wallet>] [--user-name <name>] [--limit <n>] [--offset <n>] [--json]",
+            "  --category <category>    Category filter\n  --time-period <period>  DAY, WEEK, MONTH, or ALL\n  --order-by <field>      Sort field\n  --user <wallet>         Wallet filter\n  --user-name <name>      Username filter\n  --limit/--offset <n>    Page controls\n",
+            "polyrover analytics leaderboard --time-period MONTH --limit 100 --offset 0 --json",
+        ),
+        [group, command] if group == "analytics" && command == "builder-leaderboard" => (
+            "Fetch one bounded aggregated builder-leaderboard request.",
+            "analytics builder-leaderboard [--time-period DAY|WEEK|MONTH|ALL] [--limit <n>] [--offset <n>] [--json]",
+            "  --time-period <period>  DAY, WEEK, MONTH, or ALL\n  --limit <n>             Maximum 50\n  --offset <n>            Maximum 1000\n",
+            "polyrover analytics builder-leaderboard --time-period MONTH --limit 25 --offset 0 --json",
+        ),
+        [group, command] if group == "analytics" && command == "builder-volume" => (
+            "Fetch one daily builder-volume time-series request.",
+            "analytics builder-volume [--time-period DAY|WEEK|MONTH|ALL] [--json]",
+            "  --time-period <period>  DAY, WEEK, MONTH, or ALL\n",
+            "polyrover analytics builder-volume --time-period ALL --json",
         ),
         [group, command] if group == "stream" && command == "watch" => (
             "Watch public market WebSocket events.",
@@ -430,4 +822,83 @@ fn unknown_command(command: &[String]) -> Error {
         "unknown command `{}`; run `polyrover help` to list commands",
         command.join(" ")
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clob_history_flags_build_one_atomic_request() {
+        let args = vec![
+            "--token-id".into(),
+            "token-1".into(),
+            "--start-ts".into(),
+            "1".into(),
+            "--end-ts".into(),
+            "100".into(),
+            "--interval".into(),
+            "1d".into(),
+            "--fidelity".into(),
+            "5".into(),
+        ];
+        let params = clob_history_params(&args);
+        assert_eq!(params.token_id, "token-1");
+        assert_eq!(params.start_ts, Some(1));
+        assert_eq!(params.end_ts, Some(100));
+        assert_eq!(params.interval.as_deref(), Some("1d"));
+        assert_eq!(params.fidelity, Some(5));
+
+        let batch = vec![
+            "--token-id".into(),
+            "token-1".into(),
+            "--token-id".into(),
+            "token-2".into(),
+        ];
+        assert_eq!(batch_history_params(&batch).markets.len(), 2);
+    }
+
+    #[test]
+    fn historical_cli_builders_preserve_windows_offsets_and_cursors() {
+        let args = vec![
+            "--user".into(),
+            "0xabc".into(),
+            "--start".into(),
+            "1".into(),
+            "--end".into(),
+            "100".into(),
+            "--offset".into(),
+            "200".into(),
+        ];
+        let trades = trade_params(&args);
+        assert_eq!(trades.user, "0xabc");
+        assert_eq!(trades.start, Some(1));
+        assert_eq!(trades.end, Some(100));
+        assert_eq!(trades.offset, Some(200));
+
+        let event_args = vec![
+            "--after-cursor".into(),
+            "opaque==".into(),
+            "--closed".into(),
+            "true".into(),
+            "--start-date-min".into(),
+            "2026-01-01T00:00:00Z".into(),
+        ];
+        let events = event_keyset_params(&event_args);
+        assert_eq!(events.after_cursor, "opaque==");
+        assert_eq!(events.closed, Some(true));
+        assert_eq!(events.start_date_min, "2026-01-01T00:00:00Z");
+
+        let builders = builder_leaderboard_params(&[
+            "--time-period".into(),
+            "MONTH".into(),
+            "--limit".into(),
+            "25".into(),
+            "--offset".into(),
+            "50".into(),
+        ]);
+        assert_eq!(builders.time_period, "MONTH");
+        assert_eq!(builders.limit, Some(25));
+        assert_eq!(builders.offset, Some(50));
+    }
 }

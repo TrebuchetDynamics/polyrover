@@ -4,11 +4,12 @@ use serde::Deserialize;
 
 use crate::{
     data_types::{
-        Activity, ClosedPosition, Holder, LeaderboardRow, LiveVolumeResponse, OpenInterest,
-        PortfolioValue, Position, TotalMarketsTraded, Trade,
+        Activity, BuilderLeaderboardRow, BuilderVolumeRow, ClosedPosition, ComboActivityPage,
+        Holder, LeaderboardRow, LiveVolumeResponse, OpenInterest, PortfolioValue, Position,
+        TotalMarketsTraded, Trade,
     },
     query::escape,
-    transport, Result,
+    transport, Error, Result,
 };
 
 pub const DEFAULT_BASE_URL: &str = "https://data-api.polymarket.com";
@@ -53,6 +54,28 @@ pub struct ActivityParams {
     pub sort_direction: String,
     pub limit: Option<u32>,
     pub offset: Option<u32>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ComboActivityParams {
+    pub user: String,
+    pub market_ids: Vec<String>,
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
+    pub cursor: String,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BuilderLeaderboardParams {
+    pub time_period: String,
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BuilderVolumeParams {
+    /// `DAY`, `WEEK`, `MONTH`, or `ALL`; upstream defaults to `DAY` when empty.
+    pub time_period: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -152,6 +175,15 @@ impl Client {
         self.transport.get_json(&params.path("/activity")).await
     }
 
+    pub async fn combo_activity(&self, params: &ComboActivityParams) -> Result<ComboActivityPage> {
+        if params.user.trim().is_empty() {
+            return Err(Error::Invalid("combo activity user is required".into()));
+        }
+        self.transport
+            .get_json(&params.path("/v1/activity/combos"))
+            .await
+    }
+
     pub async fn top_holders(&self, market: &str, limit: u32) -> Result<Vec<Holder>> {
         let groups: Vec<HolderGroup> = self
             .transport
@@ -245,6 +277,20 @@ impl Client {
         Ok(rows)
     }
 
+    pub async fn builder_leaderboard(
+        &self,
+        params: &BuilderLeaderboardParams,
+    ) -> Result<Vec<BuilderLeaderboardRow>> {
+        self.transport.get_json(&params.path()).await
+    }
+
+    pub async fn builder_volume(
+        &self,
+        params: &BuilderVolumeParams,
+    ) -> Result<Vec<BuilderVolumeRow>> {
+        self.transport.get_json(&params.path()).await
+    }
+
     pub async fn live_volume(&self, event_id: u32) -> Result<LiveVolumeResponse> {
         let raw = self
             .transport
@@ -316,6 +362,43 @@ impl ActivityParams {
                 pair("sortDirection", &self.sort_direction),
                 pair("side", &self.side),
             ],
+        )
+    }
+}
+
+impl ComboActivityParams {
+    fn path(&self, base: &str) -> String {
+        path(
+            base,
+            &[
+                pair("user", &self.user),
+                csv_pair("market_id", &self.market_ids),
+                number_pair("limit", self.limit),
+                number_pair("offset", self.offset),
+                pair("cursor", &self.cursor),
+            ],
+        )
+    }
+}
+
+impl BuilderLeaderboardParams {
+    fn path(&self) -> String {
+        path(
+            "/v1/builders/leaderboard",
+            &[
+                pair("timePeriod", &self.time_period),
+                number_pair("limit", self.limit),
+                number_pair("offset", self.offset),
+            ],
+        )
+    }
+}
+
+impl BuilderVolumeParams {
+    fn path(&self) -> String {
+        path(
+            "/v1/builders/volume",
+            &[pair("timePeriod", &self.time_period)],
         )
     }
 }

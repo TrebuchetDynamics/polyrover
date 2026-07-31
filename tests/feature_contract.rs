@@ -47,6 +47,60 @@ fn public_research_context_capabilities_are_implemented_for_v020() {
 }
 
 #[test]
+fn authenticated_history_reads_are_implemented_without_execution() {
+    for id in [
+        "clob.trades.list",
+        "clob.orders.list",
+        "clob.order.read",
+        "clob.rewards.list",
+        "clob.rewards.markets.list",
+        "clob.rewards.total.read",
+    ] {
+        assert_eq!(
+            CapabilityCatalog::by_id(id).unwrap().status,
+            CapabilityStatus::Implemented,
+            "{id}"
+        );
+    }
+    for id in [
+        "clob.orders.limit.submit",
+        "clob.orders.market.submit",
+        "clob.order.cancel",
+        "clob.apiKey.createOrDerive",
+    ] {
+        assert_ne!(
+            CapabilityCatalog::by_id(id).unwrap().status,
+            CapabilityStatus::Implemented,
+            "{id}"
+        );
+    }
+}
+
+#[test]
+fn public_historical_query_capabilities_are_implemented() {
+    for id in [
+        "clob.priceHistory.read",
+        "clob.builderTrades.list",
+        "clob.rebates.read",
+        "events.list",
+        "markets.list",
+        "data.trades.read",
+        "data.activity.read",
+        "data.closedPositions.read",
+        "data.comboActivity.read",
+        "data.leaderboard.read",
+        "data.builderLeaderboard.read",
+        "data.builderVolume.read",
+    ] {
+        assert_eq!(
+            CapabilityCatalog::by_id(id).unwrap().status,
+            CapabilityStatus::Implemented,
+            "{id}"
+        );
+    }
+}
+
+#[test]
 fn reported_capabilities_stay_sorted() {
     let ids = ids();
     assert!(ids.windows(2).all(|pair| pair[0] <= pair[1]));

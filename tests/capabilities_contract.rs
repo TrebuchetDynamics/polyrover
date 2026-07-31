@@ -37,7 +37,7 @@ fn compiled_catalog_matches_manifest() {
         .iter()
         .map(project)
         .collect::<Vec<_>>();
-    assert_eq!(expected.len(), 136);
+    assert_eq!(expected.len(), 140);
     let serialized = serde_json::to_value(CapabilityCatalog::all()).expect("catalog serializes");
     let actual = serialized
         .as_array()

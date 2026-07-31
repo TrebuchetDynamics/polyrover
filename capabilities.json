@@ -553,11 +553,17 @@
       "cliCommand": null,
       "extension": true,
       "summary": "Clob builder trades list.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "clob::Client::builder_trades",
+        "Client::builder_trades"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/feature_contract.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "Public library-only atomic read; callers own traversal and persistence."
     },
     {
       "id": "clob.currentRewards.list",
@@ -1025,21 +1031,20 @@
       ],
       "signing": "none",
       "mutates": false,
-      "cliCommand": [
-        "clob",
-        "order"
-      ],
+      "cliCommand": null,
       "extension": false,
       "summary": "Clob order read.",
-      "status": "dtoOnly",
+      "status": "implemented",
       "api": [
-        "clob_orders::OrderRecord"
+        "authenticated_clob::Client::order",
+        "Client::authenticated_order"
       ],
       "tests": [
-        "src/capabilities/clob_orders.rs"
+        "tests/authenticated_client.rs",
+        "tests/contracts.rs"
       ],
       "guard": null,
-      "notes": "Typed models exist, but no network operation is implemented."
+      "notes": "L2-authenticated library-only atomic read; credentials are borrowed per request and redacted; no CLI, key creation, signing key, mutation, traversal, or persistence."
     },
     {
       "id": "clob.orderScoring.read",
@@ -1183,21 +1188,20 @@
       ],
       "signing": "none",
       "mutates": false,
-      "cliCommand": [
-        "clob",
-        "orders"
-      ],
+      "cliCommand": null,
       "extension": false,
       "summary": "Clob orders list.",
-      "status": "dtoOnly",
+      "status": "implemented",
       "api": [
-        "clob_orders::OrderRecord"
+        "authenticated_clob::Client::orders_page",
+        "Client::authenticated_orders_page"
       ],
       "tests": [
-        "src/capabilities/clob_orders.rs"
+        "tests/authenticated_client.rs",
+        "tests/contracts.rs"
       ],
       "guard": null,
-      "notes": "Typed models exist, but no network operation is implemented."
+      "notes": "L2-authenticated library-only atomic read; credentials are borrowed per request and redacted; no CLI, key creation, signing key, mutation, traversal, or persistence."
     },
     {
       "id": "clob.orders.market.cancel",
@@ -1328,10 +1332,12 @@
         "Client::batch_price_history"
       ],
       "tests": [
-        "tests/client.rs"
+        "tests/client.rs",
+        "tests/cli.rs",
+        "tests/contracts.rs"
       ],
       "guard": null,
-      "notes": "SDK methods are implemented; CLI parity remains unimplemented. Batch requests accept at most 20 asset IDs."
+      "notes": "Public SDK and CLI expose one atomic single-token or maximum-20-token history request; callers own traversal and persistence."
     },
     {
       "id": "clob.prices.batchRead",
@@ -1383,6 +1389,32 @@
       "notes": "No callable Polyrover operation is implemented."
     },
     {
+      "id": "clob.rebates.read",
+      "tier": "public",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Clob rebates read.",
+      "status": "implemented",
+      "api": [
+        "clob::Client::rebates",
+        "Client::rebates"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/feature_contract.rs"
+      ],
+      "guard": null,
+      "notes": "Public library-only atomic read; callers own traversal and persistence."
+    },
+    {
       "id": "clob.rewardPercentages.read",
       "tier": "authenticated",
       "service": "clob",
@@ -1416,17 +1448,69 @@
       ],
       "signing": "none",
       "mutates": false,
-      "cliCommand": [
-        "clob",
-        "rewards"
-      ],
+      "cliCommand": null,
       "extension": false,
       "summary": "Clob rewards list.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "authenticated_clob::Client::rewards_page"
+      ],
+      "tests": [
+        "tests/authenticated_client.rs",
+        "tests/feature_contract.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "L2-authenticated library-only atomic read; credentials are borrowed per request and redacted; no CLI, mutation, traversal, or persistence."
+    },
+    {
+      "id": "clob.rewards.markets.list",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "list",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": false,
+      "summary": "Clob rewards markets list.",
+      "status": "implemented",
+      "api": [
+        "authenticated_clob::Client::rewards_markets_page"
+      ],
+      "tests": [
+        "tests/authenticated_client.rs",
+        "tests/feature_contract.rs"
+      ],
+      "guard": null,
+      "notes": "L2-authenticated library-only atomic read; credentials are borrowed per request and redacted; no CLI, mutation, traversal, or persistence."
+    },
+    {
+      "id": "clob.rewards.total.read",
+      "tier": "authenticated",
+      "service": "clob",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "l2"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": false,
+      "summary": "Clob rewards total read.",
+      "status": "implemented",
+      "api": [
+        "authenticated_clob::Client::rewards_total"
+      ],
+      "tests": [
+        "tests/authenticated_client.rs",
+        "tests/feature_contract.rs"
+      ],
+      "guard": null,
+      "notes": "L2-authenticated library-only atomic read; credentials are borrowed per request and redacted; no CLI, mutation, traversal, or persistence."
     },
     {
       "id": "clob.samplingMarkets.list",
@@ -1622,17 +1706,20 @@
       ],
       "signing": "none",
       "mutates": false,
-      "cliCommand": [
-        "clob",
-        "trades"
-      ],
+      "cliCommand": null,
       "extension": false,
       "summary": "Clob trades list.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "authenticated_clob::Client::trades_page",
+        "Client::authenticated_trades_page"
+      ],
+      "tests": [
+        "tests/authenticated_client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "L2-authenticated library-only atomic read; credentials are borrowed per request and redacted; no CLI, key creation, signing key, mutation, traversal, or persistence."
     },
     {
       "id": "comments.byUser.list",
@@ -1876,7 +1963,7 @@
       "signing": "none",
       "mutates": false,
       "cliCommand": [
-        "data",
+        "analytics",
         "activity"
       ],
       "extension": false,
@@ -1884,13 +1971,16 @@
       "status": "implemented",
       "api": [
         "data::Client::activity",
-        "data::Client::activity_with"
+        "data::Client::activity_with",
+        "Client::activity",
+        "Client::activity_with"
       ],
       "tests": [
-        "tests/client.rs"
+        "tests/client.rs",
+        "tests/cli.rs"
       ],
       "guard": null,
-      "notes": "ActivityParams supports wallet, market/event, activity type, side, time, sorting, limit, and offset filters."
+      "notes": "analytics activity exposes one atomic offset page with wallet, market/event, type, side, time, and sorting filters."
     },
     {
       "id": "data.builderLeaderboard.read",
@@ -1904,16 +1994,23 @@
       "signing": "none",
       "mutates": false,
       "cliCommand": [
-        "data",
+        "analytics",
         "builder-leaderboard"
       ],
       "extension": false,
       "summary": "Data builder leaderboard read.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "data::Client::builder_leaderboard",
+        "Client::builder_leaderboard"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs",
+        "tests/cli.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "Documented aggregated builder leaderboard; one atomic offset page with DAY, WEEK, MONTH, or ALL period."
     },
     {
       "id": "data.builderVolume.read",
@@ -1927,16 +2024,23 @@
       "signing": "none",
       "mutates": false,
       "cliCommand": [
-        "data",
+        "analytics",
         "builder-volume"
       ],
       "extension": false,
       "summary": "Data builder volume read.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "data::Client::builder_volume",
+        "Client::builder_volume"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs",
+        "tests/cli.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "Documented daily builder volume time-series; one atomic request with DAY, WEEK, MONTH, or ALL period."
     },
     {
       "id": "data.closedPositions.read",
@@ -1950,7 +2054,7 @@
       "signing": "none",
       "mutates": false,
       "cliCommand": [
-        "data",
+        "analytics",
         "closed-positions"
       ],
       "extension": false,
@@ -1958,13 +2062,42 @@
       "status": "implemented",
       "api": [
         "data::Client::closed_positions",
-        "data::Client::closed_positions_with"
+        "data::Client::closed_positions_with",
+        "Client::closed_positions",
+        "Client::closed_positions_with"
       ],
       "tests": [
-        "tests/client.rs"
+        "tests/client.rs",
+        "tests/cli.rs"
       ],
       "guard": null,
-      "notes": "ClosedPositionParams supports wallet, market/event, title, sorting, limit, and offset filters."
+      "notes": "analytics closed-positions exposes one atomic offset page with wallet, market/event, title, and sorting filters."
+    },
+    {
+      "id": "data.comboActivity.read",
+      "tier": "public",
+      "service": "data",
+      "operation": "read",
+      "transport": "https",
+      "auth": [
+        "none"
+      ],
+      "signing": "none",
+      "mutates": false,
+      "cliCommand": null,
+      "extension": true,
+      "summary": "Data combo activity read.",
+      "status": "implemented",
+      "api": [
+        "data::Client::combo_activity",
+        "Client::combo_activity"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/feature_contract.rs"
+      ],
+      "guard": null,
+      "notes": "Public library-only atomic read; callers own cursor traversal and persistence."
     },
     {
       "id": "data.holders.read",
@@ -2005,7 +2138,7 @@
       "signing": "none",
       "mutates": false,
       "cliCommand": [
-        "data",
+        "analytics",
         "leaderboard"
       ],
       "extension": false,
@@ -2013,13 +2146,16 @@
       "status": "implemented",
       "api": [
         "data::Client::trader_leaderboard",
-        "data::Client::trader_leaderboard_with"
+        "data::Client::trader_leaderboard_with",
+        "Client::trader_leaderboard",
+        "Client::trader_leaderboard_with"
       ],
       "tests": [
-        "tests/client.rs"
+        "tests/client.rs",
+        "tests/cli.rs"
       ],
       "guard": null,
-      "notes": "LeaderboardParams supports category, timeframe, ordering, wallet/username, limit, and offset filters."
+      "notes": "analytics leaderboard exposes one atomic offset page with category, period, ordering, wallet, and username filters."
     },
     {
       "id": "data.marketTrades.read",
@@ -2158,7 +2294,7 @@
       "signing": "none",
       "mutates": false,
       "cliCommand": [
-        "data",
+        "analytics",
         "trades"
       ],
       "extension": false,
@@ -2166,13 +2302,16 @@
       "status": "implemented",
       "api": [
         "data::Client::trades",
-        "data::Client::trades_with"
+        "data::Client::trades_with",
+        "Client::trades",
+        "Client::trades_with"
       ],
       "tests": [
-        "tests/client.rs"
+        "tests/client.rs",
+        "tests/cli.rs"
       ],
       "guard": null,
-      "notes": "TradeParams supports wallet, market/event, side, taker, amount, time, limit, and offset filters."
+      "notes": "analytics trades exposes one atomic offset page with wallet, market/event, side, taker, amount, and time filters."
     },
     {
       "id": "data.value.read",
@@ -2267,20 +2406,24 @@
       "signing": "none",
       "mutates": false,
       "cliCommand": [
-        "events",
-        "list"
+        "gamma",
+        "events"
       ],
       "extension": false,
       "summary": "Events list.",
       "status": "implemented",
       "api": [
-        "gamma::Client::events"
+        "gamma::Client::events",
+        "gamma::Client::event_page",
+        "Client::events",
+        "Client::event_page"
       ],
       "tests": [
-        "src/api/gamma.rs"
+        "tests/client.rs",
+        "tests/cli.rs"
       ],
       "guard": null,
-      "notes": null
+      "notes": "gamma events and gamma event-page expose one offset or opaque-cursor page with documented status and date/time filters."
     },
     {
       "id": "events.tags.list",
@@ -2507,21 +2650,24 @@
       "signing": "none",
       "mutates": false,
       "cliCommand": [
-        "markets",
-        "list"
+        "gamma",
+        "markets"
       ],
       "extension": false,
       "summary": "Markets list.",
       "status": "implemented",
       "api": [
         "gamma::Client::markets",
-        "gamma::Client::market_page"
+        "gamma::Client::market_page",
+        "Client::markets",
+        "Client::market_page"
       ],
       "tests": [
-        "tests/client.rs"
+        "tests/client.rs",
+        "tests/cli.rs"
       ],
       "guard": null,
-      "notes": "market_page uses Gamma keyset pagination with opaque after_cursor/next_cursor tokens for catalogs beyond the offset limit."
+      "notes": "gamma markets and gamma market-page expose one offset or opaque-cursor page with documented filters."
     },
     {
       "id": "markets.search",

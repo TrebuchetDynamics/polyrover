@@ -15,6 +15,9 @@
 #[cfg(feature = "authenticated")]
 #[path = "capabilities/auth.rs"]
 pub mod auth;
+#[cfg(feature = "authenticated")]
+#[path = "api/authenticated_clob.rs"]
+pub mod authenticated_clob;
 #[cfg(feature = "bridge")]
 #[path = "capabilities/bridge.rs"]
 pub mod bridge;
@@ -25,6 +28,9 @@ mod client;
 #[cfg(feature = "public")]
 #[path = "api/clob.rs"]
 pub mod clob;
+#[cfg(feature = "authenticated")]
+#[path = "capabilities/clob_history.rs"]
+pub mod clob_history;
 #[cfg(feature = "execution")]
 #[path = "capabilities/clob_orders.rs"]
 pub mod clob_orders;

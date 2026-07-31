@@ -12,6 +12,21 @@ fn token_id() -> String {
 
 #[tokio::test]
 #[ignore = "manual public API canary; never run in ordinary CI"]
+async fn live_closed_event_page_matches_the_typed_contract() {
+    let page = Client::new(ClientConfig::default())
+        .unwrap()
+        .event_page(&polyrover::gamma::EventKeysetParams {
+            limit: Some(1),
+            closed: Some(true),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert!(page.events.len() <= 1);
+}
+
+#[tokio::test]
+#[ignore = "manual public API canary; never run in ordinary CI"]
 async fn live_single_price_history_matches_the_typed_contract() {
     let history = Client::new(ClientConfig::default())
         .unwrap()

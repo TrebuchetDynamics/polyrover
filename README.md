@@ -21,14 +21,14 @@ default build.
 
 ## What Polyrover does
 
-| Goal | Polyrover surface |
-| --- | --- |
-| Find markets and events | Gamma search and pagination |
+| Goal                         | Polyrover surface                                                   |
+| ---------------------------- | ------------------------------------------------------------------- |
+| Find markets and events      | Gamma search and pagination                                         |
 | Inspect prices and liquidity | CLOB prices, single/batch history, spreads, books, and fee metadata |
-| Research public accounts | Positions, trades, activity, holders, value, and leaderboards |
-| Watch market changes | Typed public market WebSocket events |
-| Estimate hypothetical fills | Local book walking with optional taker-fee estimates |
-| Build Rust data pipelines | One async `Client` over Gamma, CLOB, Data API, and market WSS |
+| Research public accounts     | Positions, trades, activity, holders, value, and leaderboards       |
+| Watch market changes         | Typed public market WebSocket events                                |
+| Estimate hypothetical fills  | Local book walking with optional taker-fee estimates                |
+| Build Rust data pipelines    | One async `Client` over Gamma, CLOB, Data API, and market WSS       |
 
 CLI successes and failures share one versioned JSON envelope for scripts and
 agents. The default `public` feature contains no fund-moving path.
@@ -36,7 +36,7 @@ agents. The default `public` feature contains no fund-moving path.
 Use Polyrover for public-data tooling and local execution research. Use
 Polymarket's
 [official Rust SDK v2](https://github.com/Polymarket/rs-clob-client-v2) when you
-need supported authentication, order management, or production trading.
+need API-key creation, order management, or production trading.
 
 ## Quick start
 
@@ -98,6 +98,16 @@ polyrover analytics trades --user "$WALLET" --limit 20 --json
 polyrover analytics leaderboard --limit 20 --json
 ```
 
+### Query one bounded history page
+
+Each command below makes one request/page; see the [endpoint capability matrix](docs/endpoint-capability-matrix.md) for limits and retention semantics.
+
+```bash
+polyrover clob price-history --token-id "$TOKEN_ID" --interval 1d --fidelity 5 --json
+polyrover gamma event-page --closed true --limit 100 --after-cursor "$CURSOR" --json
+polyrover analytics trades --user "$PUBLIC_WALLET" --start 1 --limit 100 --offset 0 --json
+```
+
 ### Watch bounded market events
 
 ```bash
@@ -123,15 +133,15 @@ polyrover clob simulate \
 
 ## CLI reference
 
-| Area | Commands | Purpose |
-| --- | --- | --- |
-| Health | `ping` | Check public API reachability |
-| Discovery | `gamma search`, `gamma markets` | Find events, markets, and outcome token IDs |
-| Market data | `clob book`, `clob price` | Read executable liquidity and side prices |
-| Fees and simulation | `clob fees`, `clob fee-rate`, `clob simulate` | Inspect costs and estimate hypothetical fills |
-| Account research | `analytics positions`, `analytics trades`, `analytics leaderboard` | Read public portfolio and trader data |
-| Streaming | `stream watch` | Collect bounded public market events |
-| Local paper state | `sim reset`, `sim buy`, `sim sell` | Apply local fills without network execution |
+| Area                | Commands                                                                                                                                                                            | Purpose                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Health              | `ping`                                                                                                                                                                              | Check public API reachability                               |
+| Discovery           | `gamma search`, `gamma markets`, `gamma market-page`, `gamma events`, `gamma event-page`                                                                                            | Find events, markets, and outcome token IDs                 |
+| Market data         | `clob book`, `clob price`, `clob price-history`, `clob batch-price-history`                                                                                                         | Read executable liquidity, side prices, and bounded history |
+| Fees and simulation | `clob fees`, `clob fee-rate`, `clob simulate`                                                                                                                                       | Inspect costs and estimate hypothetical fills               |
+| Account research    | `analytics positions`, `analytics trades`, `analytics closed-positions`, `analytics activity`, `analytics leaderboard`, `analytics builder-leaderboard`, `analytics builder-volume` | Read bounded public portfolio, activity, and ranking data   |
+| Streaming           | `stream watch`                                                                                                                                                                      | Collect bounded public market events                        |
+| Local paper state   | `sim reset`, `sim buy`, `sim sell`                                                                                                                                                  | Apply local fills without network execution                 |
 
 Add `--json` for the versioned envelope. Run `polyrover help <command>` for all
 options and examples.
@@ -186,17 +196,36 @@ polyrover = { git = "https://github.com/TrebuchetDynamics/polyrover", default-fe
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
-Read typed single-token history:
+Each example below makes one request/page; callers own cursor/offset traversal and persistence. See the [endpoint capability matrix](docs/endpoint-capability-matrix.md).
 
 ```rust
-use polyrover::{clob::PriceHistoryParams, Client, ClientConfig};
+use polyrover::{Client, ClientConfig};
 
 let client = Client::new(ClientConfig::default())?;
-let history = client
-    .price_history(&PriceHistoryParams {
+let prices = client
+    .price_history(&polyrover::clob::PriceHistoryParams {
         token_id: "TOKEN_ID".into(),
-        interval: Some("1d".into()),
+        start_ts: Some(1_700_000_000),
+        end_ts: Some(1_700_086_400),
         fidelity: Some(5),
+        ..Default::default()
+    })
+    .await?;
+
+let events = client
+    .event_page(&polyrover::gamma::EventKeysetParams {
+        limit: Some(100),
+        closed: Some(true),
+        after_cursor: previous_next_cursor,
+        ..Default::default()
+    })
+    .await?;
+
+let trades = client
+    .trades_with(&polyrover::data::TradeParams {
+        user: "PUBLIC_WALLET".into(),
+        start: Some(1),
+        limit: Some(100),
         ..Default::default()
     })
     .await?;
@@ -217,6 +246,37 @@ while let Some(event) = events.next().await {
 
 The consuming server owns persistence, scheduling, analytics, and alerts;
 Polyrover only supplies typed public data.
+
+</details>
+
+<details>
+<summary><strong>Opt-in authenticated history reads</strong></summary>
+
+Authenticated history is an opt-in library surface. Callers pass `&L2Credentials` to each read; Polyrover does not load, store, print, or expose credentials through `ClientConfig` or CLI commands. MegaBot consumers must not enable this feature and continue to compile only `public`.
+
+```rust
+use polyrover::{
+    auth::L2Credentials,
+    authenticated_clob::TradeParams,
+};
+
+let credentials = L2Credentials {
+    address: account_address,
+    api_key,
+};
+let page = client
+    .authenticated_trades_page(
+        &credentials,
+        &TradeParams {
+            after: Some(1_700_000_000),
+            next_cursor: previous_next_cursor,
+            ..Default::default()
+        },
+    )
+    .await?;
+```
+
+`account_address`, `api_key`, and `previous_next_cursor` are supplied by the caller and must not be logged. Each call returns one upstream page; no authenticated CLI, key creation, signing key, order mutation, traversal, or persistence is provided.
 
 </details>
 
@@ -261,7 +321,7 @@ private-key signing, relayer, or bridge-transfer client.
 </p>
 
 - **`public` (default)** — Gamma, CLOB, Data API, market WSS, and resolution.
-- **`authenticated`** — public features plus L2 HMAC helpers and user WSS.
+- **`authenticated`** — public features plus borrowed-credential L2 history reads, HMAC helpers, and user WSS; no authenticated CLI.
 - **`wallet`** — local address derivation and readiness helpers.
 - **`execution`** — order and cancellation data types only; no submission transport.
 - **`bridge`** — bridge data types and local validation only; no transfer transport.
@@ -271,6 +331,7 @@ private-key signing, relayer, or bridge-transfer client.
 
 Current limitations:
 
+- “Documented historical-query parity” means Polyrover exposes the documented Prediction Markets history requests and pagination controls. It does not mean Polymarket guarantees permanent retention, and Polyrover does not crawl, download, resume, or persist complete archives.
 - A book snapshot cannot predict latency, queue position, or market movement.
 - Streaming liquidity/depth and local simulation use Decimal internally;
   upstream wire values remain strings.
@@ -310,12 +371,12 @@ makers pay no trading fee. Taker fees use:
 fee = shares × taker_fee_rate × price × (1 - price)
 ```
 
-| Market category | Formula coefficient |
-| --- | ---: |
-| Crypto | `0.07` |
-| Sports, economics, culture, weather, other/general | `0.05` |
-| Finance, politics, mentions, tech | `0.04` |
-| Geopolitics/world events | `0` |
+| Market category                                    | Formula coefficient |
+| -------------------------------------------------- | ------------------: |
+| Crypto                                             |              `0.07` |
+| Sports, economics, culture, weather, other/general |              `0.05` |
+| Finance, politics, mentions, tech                  |              `0.04` |
+| Geopolitics/world events                           |                 `0` |
 
 These are formula coefficients, not percentage labels. Polyrover applies the
 formula to each consumed level and rounds the total to five decimal places in
@@ -333,12 +394,12 @@ different fields. Polyrover does not infer categories, so supply
 Polymarket treats every order as a signed limit order. A “market order” is a
 limit order priced to match resting liquidity immediately.
 
-| Type | Unfilled amount |
-| --- | --- |
-| **GTC** — Good Till Cancelled | Rests until filled or cancelled |
-| **GTD** — Good Till Date | Rests until expiration |
-| **FOK** — Fill Or Kill | Cancels unless fully filled immediately |
-| **FAK** — Fill And Kill | Fills what is available, then cancels the rest |
+| Type                          | Unfilled amount                                |
+| ----------------------------- | ---------------------------------------------- |
+| **GTC** — Good Till Cancelled | Rests until filled or cancelled                |
+| **GTD** — Good Till Date      | Rests until expiration                         |
+| **FOK** — Fill Or Kill        | Cancels unless fully filled immediately        |
+| **FAK** — Fill And Kill       | Fills what is available, then cancels the rest |
 
 A post-only order rests as a maker or is rejected if it would match immediately.
 See the authoritative

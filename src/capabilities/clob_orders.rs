@@ -5,7 +5,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::jsonx::{int_or_zero, string_or_number};
+pub use crate::clob_history::OrderRecord;
+use crate::jsonx::string_or_number;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct CreateOrderParams {
@@ -81,44 +82,6 @@ pub struct CancelOrdersResponse {
 pub struct CancelMarketParams {
     pub market: String,
     pub asset: String,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
-pub struct OrderRecord {
-    #[serde(default)]
-    pub id: String,
-    #[serde(default)]
-    pub status: String,
-    #[serde(default)]
-    pub owner: String,
-    #[serde(default)]
-    pub market: String,
-    #[serde(default, alias = "assetId")]
-    pub asset_id: String,
-    #[serde(default)]
-    pub side: String,
-    #[serde(default, alias = "originalSize", deserialize_with = "string_or_number")]
-    pub original_size: String,
-    #[serde(default, alias = "sizeMatched", deserialize_with = "string_or_number")]
-    pub size_matched: String,
-    #[serde(default, deserialize_with = "string_or_number")]
-    pub price: String,
-    #[serde(default)]
-    pub outcome: String,
-    #[serde(default, rename = "type")]
-    pub record_type: String,
-    #[serde(default, alias = "orderType", deserialize_with = "string_or_number")]
-    pub order_type: String,
-    #[serde(default, alias = "signatureType", deserialize_with = "int_or_zero")]
-    pub signature_type: i64,
-    #[serde(default, alias = "createdAt", deserialize_with = "string_or_number")]
-    pub created_at: String,
-    #[serde(default, deserialize_with = "string_or_number")]
-    pub expiration: String,
-    #[serde(default, alias = "makerAddress")]
-    pub maker_address: String,
-    #[serde(default, alias = "associateTrades")]
-    pub associate_trades: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, PartialEq)]

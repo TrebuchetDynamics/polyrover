@@ -147,6 +147,14 @@ pub struct MarketPage {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct EventPage {
+    #[serde(default)]
+    pub events: Vec<Event>,
+    #[serde(default)]
+    pub next_cursor: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct Event {
     #[serde(default)]
     pub id: String,
@@ -466,6 +474,84 @@ pub struct ClobLastTradePrice {
     pub price: String,
     #[serde(default)]
     pub side: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ClobCursorPage<T> {
+    #[serde(default)]
+    pub limit: u32,
+    #[serde(default)]
+    pub next_cursor: String,
+    #[serde(default)]
+    pub count: u32,
+    #[serde(default)]
+    pub data: Vec<T>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ClobBuilderTrade {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default, rename = "tradeType")]
+    pub trade_type: String,
+    #[serde(default, rename = "takerOrderHash")]
+    pub taker_order_hash: String,
+    #[serde(default)]
+    pub builder: String,
+    #[serde(default)]
+    pub market: String,
+    #[serde(default, rename = "assetId")]
+    pub asset_id: String,
+    #[serde(default)]
+    pub side: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub size: String,
+    #[serde(default, rename = "sizeUsdc", deserialize_with = "string_or_number")]
+    pub size_usdc: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub price: String,
+    #[serde(default)]
+    pub status: String,
+    #[serde(default)]
+    pub outcome: String,
+    #[serde(default, rename = "outcomeIndex", deserialize_with = "int_or_zero")]
+    pub outcome_index: i64,
+    #[serde(default)]
+    pub owner: String,
+    #[serde(default)]
+    pub maker: String,
+    #[serde(default, rename = "transactionHash")]
+    pub transaction_hash: String,
+    #[serde(default, rename = "matchTime", deserialize_with = "string_or_number")]
+    pub match_time: String,
+    #[serde(default, rename = "bucketIndex", deserialize_with = "int_or_zero")]
+    pub bucket_index: i64,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub fee: String,
+    #[serde(default, rename = "feeUsdc", deserialize_with = "string_or_number")]
+    pub fee_usdc: String,
+    #[serde(default)]
+    pub err_msg: Option<String>,
+    #[serde(default, rename = "createdAt")]
+    pub created_at: String,
+    #[serde(default, rename = "updatedAt")]
+    pub updated_at: String,
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ClobRebate {
+    #[serde(default)]
+    pub date: String,
+    #[serde(default)]
+    pub condition_id: String,
+    #[serde(default)]
+    pub asset_address: String,
+    #[serde(default)]
+    pub maker_address: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub rebated_fees_usdc: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]

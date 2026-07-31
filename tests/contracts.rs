@@ -54,13 +54,45 @@ fn gamma_taxonomy_contract_examples_deserialize() {
 }
 
 #[test]
+fn builder_leaderboard_contract_example_preserves_decimal_text() {
+    let rows: Vec<polyrover::data_types::BuilderLeaderboardRow> =
+        serde_json::from_str(include_str!("fixtures/data/builder-leaderboard.json")).unwrap();
+    assert_eq!(rows[0].rank, "1");
+    assert_eq!(rows[0].volume, "123.45");
+    assert_eq!(rows[0].active_users, 7);
+}
+
+#[test]
+fn builder_volume_contract_example_preserves_decimal_text() {
+    let rows: Vec<polyrover::data_types::BuilderVolumeRow> =
+        serde_json::from_str(include_str!("fixtures/data/builder-volume.json")).unwrap();
+    assert_eq!(rows[0].dt, "2025-11-15T00:00:00Z");
+    assert_eq!(rows[0].volume, "123.45");
+    assert_eq!(rows[0].active_users, 7);
+}
+
+#[cfg(feature = "authenticated")]
+#[test]
+fn authenticated_clob_page_examples_preserve_decimal_text() {
+    use polyrover::clob_history::{ClobTradeRecord, CursorPage, OrderRecord};
+
+    let trades: CursorPage<ClobTradeRecord> =
+        serde_json::from_str(include_str!("fixtures/clob/auth-trades-page.json")).unwrap();
+    let orders: CursorPage<OrderRecord> =
+        serde_json::from_str(include_str!("fixtures/clob/auth-orders-page.json")).unwrap();
+    assert_eq!(trades.data[0].price, "0.5");
+    assert_eq!(orders.data[0].original_size, "100");
+    assert_eq!(trades.next_cursor, "MTAw");
+}
+
+#[test]
 fn every_contract_fixture_has_explicit_provenance() {
     let manifest: Value = serde_json::from_str(include_str!("fixtures/provenance.json")).unwrap();
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     let fixtures = manifest["fixtures"].as_array().unwrap();
 
     assert_eq!(manifest["schemaVersion"], 1);
-    assert_eq!(fixtures.len(), 10);
+    assert_eq!(fixtures.len(), 14);
     for fixture in fixtures {
         let relative = fixture["path"].as_str().unwrap();
         assert!(root.join(relative).is_file(), "missing fixture {relative}");

@@ -92,6 +92,20 @@ impl Client {
         Ok(serde_json::from_str(&body)?)
     }
 
+    #[cfg(feature = "authenticated")]
+    pub(crate) async fn get_json_with_headers<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        headers: &std::collections::BTreeMap<String, String>,
+    ) -> Result<T> {
+        let mut request = self.http.get(self.url(path)?);
+        for (name, value) in headers {
+            request = request.header(name, value);
+        }
+        let body = self.execute(request, true).await?;
+        Ok(serde_json::from_str(&body)?)
+    }
+
     pub async fn post_json<B: Serialize, T: DeserializeOwned>(
         &self,
         path: &str,
@@ -234,6 +248,45 @@ mod tests {
         );
         assert_eq!(retry_delay(500, 0, None, &policy), None);
         assert_eq!(retry_delay(429, 2, None, &policy), None);
+    }
+
+    #[cfg(feature = "authenticated")]
+    #[tokio::test]
+    async fn authenticated_get_sends_caller_headers() {
+        use std::{
+            collections::BTreeMap,
+            io::{Read, Write},
+            net::TcpListener,
+            thread,
+        };
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut raw = [0; 4096];
+            let length = stream.read(&mut raw).unwrap();
+            let request = String::from_utf8_lossy(&raw[..length]);
+            assert!(request.contains("poly_address: 0x1234"));
+            assert!(request.contains("poly_api_key: key"));
+            stream
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}",
+                )
+                .unwrap();
+        });
+        let client = Client::new(Config::new(format!("http://{address}"))).unwrap();
+        let _: serde_json::Value = client
+            .get_json_with_headers(
+                "/data/trades",
+                &BTreeMap::from([
+                    ("POLY_ADDRESS".into(), "0x1234".into()),
+                    ("POLY_API_KEY".into(), "key".into()),
+                ]),
+            )
+            .await
+            .unwrap();
+        server.join().unwrap();
     }
 
     #[tokio::test]

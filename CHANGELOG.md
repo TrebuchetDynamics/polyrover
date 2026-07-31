@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Documented public historical-query parity with atomic Gamma event pages, builder leaderboard/volume history, and bounded CLOB/Gamma/Data CLI commands.
+- Opt-in, library-only L2-authenticated trade and order history reads with per-call borrowed credentials.
+
+### Safety
+
+- Authenticated reads add no credential loading/storage, private-key signing, CLI secret path, API-key creation, order mutation, traversal, or persistence.
+
 ## 0.2.0 - 2026-07-28
 
 ### Added
@@ -30,7 +39,7 @@
 
 ### Changed
 
-| Previous API | Replacement | Reason |
-|---|---|---|
-| `capabilities::all()` | `CapabilityCatalog::all()` | Use the operation-level catalog. |
-| `capabilities::read_only_ids()` | Filter `CapabilityCatalog::all()` | Remove the coarse helper. |
+| Previous API                    | Replacement                       | Reason                           |
+| ------------------------------- | --------------------------------- | -------------------------------- |
+| `capabilities::all()`           | `CapabilityCatalog::all()`        | Use the operation-level catalog. |
+| `capabilities::read_only_ids()` | Filter `CapabilityCatalog::all()` | Remove the coarse helper.        |

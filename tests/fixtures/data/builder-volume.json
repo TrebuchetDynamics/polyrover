@@ -1,0 +1,12 @@
+[
+  {
+    "dt": "2025-11-15T00:00:00Z",
+    "builder": "example",
+    "builderCode": "code",
+    "builderLogo": "https://example.invalid/logo.png",
+    "verified": true,
+    "volume": 123.45,
+    "activeUsers": 7,
+    "rank": "1"
+  }
+]

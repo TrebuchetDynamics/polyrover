@@ -11,10 +11,10 @@ use crate::{
     query::escape,
     transport,
     types::{
-        first_price, ClobBatchPriceHistory, ClobFeeRate, ClobLastTradePrice, ClobMarket,
-        ClobMarketByTokenResponse, ClobMarketOutcome, ClobNegRiskInfo, ClobOrderBook,
-        ClobPaginatedMarkets, ClobPriceHistory, ClobServerTime, ClobTickSize,
-        CLOB_OUTCOME_RESOLVED, CLOB_OUTCOME_UNRESOLVED,
+        first_price, ClobBatchPriceHistory, ClobBuilderTrade, ClobCursorPage, ClobFeeRate,
+        ClobLastTradePrice, ClobMarket, ClobMarketByTokenResponse, ClobMarketOutcome,
+        ClobNegRiskInfo, ClobOrderBook, ClobPaginatedMarkets, ClobPriceHistory, ClobRebate,
+        ClobServerTime, ClobTickSize, CLOB_OUTCOME_RESOLVED, CLOB_OUTCOME_UNRESOLVED,
     },
     Error, Result,
 };
@@ -70,6 +70,23 @@ pub struct BatchPriceHistoryParams {
     pub interval: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fidelity: Option<u32>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BuilderTradeParams {
+    pub builder_code: String,
+    pub id: String,
+    pub market: String,
+    pub asset_id: String,
+    pub before: Option<i64>,
+    pub after: Option<i64>,
+    pub next_cursor: String,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct RebateParams {
+    pub date: String,
+    pub maker_address: String,
 }
 
 #[derive(Clone)]
@@ -272,6 +289,48 @@ impl Client {
             .await
     }
 
+    pub async fn builder_trades(
+        &self,
+        params: &BuilderTradeParams,
+    ) -> Result<ClobCursorPage<ClobBuilderTrade>> {
+        if params.builder_code.trim().is_empty() {
+            return Err(Error::Invalid(
+                "builder trades builder_code is required".into(),
+            ));
+        }
+        self.transport
+            .get_json(&query_path(
+                "/builder/trades",
+                vec![
+                    text_pair("builder_code", &params.builder_code),
+                    text_pair("id", &params.id),
+                    text_pair("market", &params.market),
+                    text_pair("asset_id", &params.asset_id),
+                    params.before.map(|value| ("before", value.to_string())),
+                    params.after.map(|value| ("after", value.to_string())),
+                    text_pair("next_cursor", &params.next_cursor),
+                ],
+            ))
+            .await
+    }
+
+    pub async fn rebates(&self, params: &RebateParams) -> Result<Vec<ClobRebate>> {
+        if params.date.trim().is_empty() || params.maker_address.trim().is_empty() {
+            return Err(Error::Invalid(
+                "rebates require date and maker_address".into(),
+            ));
+        }
+        self.transport
+            .get_json(&query_path(
+                "/rebates/current",
+                vec![
+                    text_pair("date", &params.date),
+                    text_pair("maker_address", &params.maker_address),
+                ],
+            ))
+            .await
+    }
+
     pub async fn neg_risk(&self, token_id: &str) -> Result<ClobNegRiskInfo> {
         self.transport
             .get_json(&format!("/neg-risk?token_id={}", escape(token_id)))
@@ -456,6 +515,24 @@ fn price_history_path(params: &PriceHistoryParams) -> Result<String> {
             .collect::<Vec<_>>()
             .join("&")
     ))
+}
+
+fn text_pair<'a>(key: &'a str, value: &str) -> Option<(&'a str, String)> {
+    (!value.trim().is_empty()).then(|| (key, value.to_string()))
+}
+
+fn query_path(base: &str, pairs: Vec<Option<(&str, String)>>) -> String {
+    let query = pairs
+        .into_iter()
+        .flatten()
+        .map(|(key, value)| format!("{}={}", escape(key), escape(&value)))
+        .collect::<Vec<_>>()
+        .join("&");
+    if query.is_empty() {
+        base.into()
+    } else {
+        format!("{base}?{query}")
+    }
 }
 
 fn cursor_path(base: &str, next_cursor: &str) -> String {

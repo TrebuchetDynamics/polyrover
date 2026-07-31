@@ -5,6 +5,28 @@ use serde_json::{Map, Value};
 
 use crate::jsonx::{bool_or_false, float_or_zero, int_or_zero, string_or_number};
 
+pub type BuilderLeaderboardRow = BuilderVolumeRow;
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct BuilderVolumeRow {
+    #[serde(default)]
+    pub dt: String,
+    #[serde(default)]
+    pub builder: String,
+    #[serde(default, rename = "builderCode")]
+    pub builder_code: String,
+    #[serde(default, rename = "builderLogo")]
+    pub builder_logo: String,
+    #[serde(default, deserialize_with = "bool_or_false")]
+    pub verified: bool,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub volume: String,
+    #[serde(default, rename = "activeUsers", deserialize_with = "int_or_zero")]
+    pub active_users: i64,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub rank: String,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct Position {
     #[serde(default, alias = "token_id", rename = "asset")]
@@ -173,6 +195,66 @@ pub struct Activity {
         deserialize_with = "bool_or_false"
     )]
     pub is_combo: bool,
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ComboActivityPage {
+    #[serde(default)]
+    pub activity: Vec<ComboActivity>,
+    #[serde(default)]
+    pub pagination: DataPagination,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct DataPagination {
+    #[serde(default, deserialize_with = "int_or_zero")]
+    pub limit: i64,
+    #[serde(default, deserialize_with = "int_or_zero")]
+    pub offset: i64,
+    #[serde(default, deserialize_with = "bool_or_false")]
+    pub has_more: bool,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub next_cursor: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ComboActivity {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default, rename = "type")]
+    pub activity_type: String,
+    #[serde(default)]
+    pub event_kind: String,
+    #[serde(default)]
+    pub side: String,
+    #[serde(default)]
+    pub module_kind: String,
+    #[serde(default)]
+    pub user_address: String,
+    #[serde(default)]
+    pub combo_condition_id: String,
+    #[serde(default)]
+    pub combo_position_id: String,
+    #[serde(default, deserialize_with = "int_or_zero")]
+    pub module_id: i64,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub amount_usdc: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub payout_usdc: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub timestamp: String,
+    #[serde(default)]
+    pub tx_dttm: String,
+    #[serde(default)]
+    pub tx_hash: String,
+    #[serde(default, deserialize_with = "int_or_zero")]
+    pub log_index: i64,
+    #[serde(default, deserialize_with = "int_or_zero")]
+    pub block_number: i64,
+    #[serde(default)]
+    pub legs: Vec<Value>,
     #[serde(flatten)]
     pub extra: Map<String, Value>,
 }

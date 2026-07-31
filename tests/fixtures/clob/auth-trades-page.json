@@ -1,0 +1,29 @@
+{
+  "limit": 100,
+  "next_cursor": "MTAw",
+  "count": 1,
+  "data": [
+    {
+      "id": "trade-123",
+      "taker_order_id": "order-1",
+      "market": "market-1",
+      "asset_id": "asset-1",
+      "side": "BUY",
+      "size": "100",
+      "fee_rate_bps": "30",
+      "price": "0.5",
+      "status": "TRADE_STATUS_CONFIRMED",
+      "match_time": "1700000000",
+      "match_time_nano": "1700000000000000000",
+      "last_update": "1700000001",
+      "outcome": "YES",
+      "bucket_index": 0,
+      "owner": "owner-1",
+      "maker_address": "0x1234567890123456789012345678901234567890",
+      "transaction_hash": "0xabc",
+      "err_msg": null,
+      "trader_side": "TAKER",
+      "maker_orders": []
+    }
+  ]
+}

@@ -4,23 +4,35 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    clob::{self, BatchMarketRequest, BatchPriceHistoryParams, PriceHistoryParams},
-    crypto_price,
-    data::{self, ActivityParams, ClosedPositionParams, LeaderboardParams, TradeParams},
-    data_types::{
-        Activity, ClosedPosition, Holder, LeaderboardRow, OpenInterest, PortfolioValue, Position,
-        Trade,
+    clob::{
+        self, BatchMarketRequest, BatchPriceHistoryParams, BuilderTradeParams, PriceHistoryParams,
+        RebateParams,
     },
-    gamma::{self, MarketKeysetParams, MarketParams, SearchParams, TaxonomyParams, TeamParams},
+    crypto_price,
+    data::{
+        self, ActivityParams, ClosedPositionParams, ComboActivityParams, LeaderboardParams,
+        TradeParams,
+    },
+    data_types::{
+        Activity, BuilderLeaderboardRow, BuilderVolumeRow, ClosedPosition, ComboActivityPage,
+        Holder, LeaderboardRow, OpenInterest, PortfolioValue, Position, Trade,
+    },
+    gamma::{
+        self, EventKeysetParams, EventParams, MarketKeysetParams, MarketParams, SearchParams,
+        TaxonomyParams, TeamParams,
+    },
     simulation::{self, Request as SimulationRequest, ResultRow as SimulationResult},
     types::{
-        ClobBatchPriceHistory, ClobFeeRate, ClobLastTradePrice, ClobOrderBook, ClobPriceHistory,
-        GammaSeries, GammaTag, Market, MarketPage, SearchResponse, SportMetadata,
-        SportsMarketTypes, Team,
+        ClobBatchPriceHistory, ClobBuilderTrade, ClobCursorPage, ClobFeeRate, ClobLastTradePrice,
+        ClobOrderBook, ClobPriceHistory, ClobRebate, Event, EventPage, GammaSeries, GammaTag,
+        Market, MarketPage, SearchResponse, SportMetadata, SportsMarketTypes, Team,
     },
     Result,
 };
 use serde::Serialize;
+
+#[cfg(feature = "authenticated")]
+use crate::authenticated_clob;
 
 /// Combined reachability for the public Gamma and CLOB endpoints.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -59,6 +71,8 @@ impl Default for ClientConfig {
 #[derive(Clone)]
 pub struct Client {
     gamma: gamma::Client,
+    #[cfg(feature = "authenticated")]
+    authenticated_clob: authenticated_clob::Client,
     clob: clob::Client,
     data: data::Client,
     crypto_price: crypto_price::Client,
@@ -76,6 +90,10 @@ impl Client {
         })?;
         Ok(Self {
             gamma: gamma::Client::from_transport(transport.clone()),
+            #[cfg(feature = "authenticated")]
+            authenticated_clob: authenticated_clob::Client::from_transport(
+                transport.with_base_url(config.clob_base_url.clone()),
+            ),
             clob: clob::Client::from_transport(transport.with_base_url(config.clob_base_url)),
             data: data::Client::from_transport(transport.with_base_url(config.data_base_url)),
             crypto_price: crypto_price::Client::from_transport(
@@ -98,6 +116,14 @@ impl Client {
 
     pub async fn market_by_slug(&self, slug: &str) -> Result<Market> {
         self.gamma.market_by_slug(slug).await
+    }
+
+    pub async fn events(&self, params: &EventParams) -> Result<Vec<Event>> {
+        self.gamma.events(params).await
+    }
+
+    pub async fn event_page(&self, params: &EventKeysetParams) -> Result<EventPage> {
+        self.gamma.event_page(params).await
     }
 
     pub async fn tags(&self, params: &TaxonomyParams) -> Result<Vec<GammaTag>> {
@@ -188,6 +214,17 @@ impl Client {
         self.clob.batch_price_history(params).await
     }
 
+    pub async fn builder_trades(
+        &self,
+        params: &BuilderTradeParams,
+    ) -> Result<ClobCursorPage<ClobBuilderTrade>> {
+        self.clob.builder_trades(params).await
+    }
+
+    pub async fn rebates(&self, params: &RebateParams) -> Result<Vec<ClobRebate>> {
+        self.clob.rebates(params).await
+    }
+
     pub async fn crypto_price(
         &self,
         symbol: &str,
@@ -235,6 +272,10 @@ impl Client {
         self.data.activity_with(params).await
     }
 
+    pub async fn combo_activity(&self, params: &ComboActivityParams) -> Result<ComboActivityPage> {
+        self.data.combo_activity(params).await
+    }
+
     pub async fn top_holders(&self, market: &str, limit: u32) -> Result<Vec<Holder>> {
         self.data.top_holders(market, limit).await
     }
@@ -256,6 +297,51 @@ impl Client {
         params: &LeaderboardParams,
     ) -> Result<Vec<LeaderboardRow>> {
         self.data.trader_leaderboard_with(params).await
+    }
+
+    pub async fn builder_leaderboard(
+        &self,
+        params: &data::BuilderLeaderboardParams,
+    ) -> Result<Vec<BuilderLeaderboardRow>> {
+        self.data.builder_leaderboard(params).await
+    }
+
+    pub async fn builder_volume(
+        &self,
+        params: &data::BuilderVolumeParams,
+    ) -> Result<Vec<BuilderVolumeRow>> {
+        self.data.builder_volume(params).await
+    }
+
+    #[cfg(feature = "authenticated")]
+    pub async fn authenticated_trades_page(
+        &self,
+        credentials: &crate::auth::L2Credentials,
+        params: &crate::authenticated_clob::TradeParams,
+    ) -> Result<crate::clob_history::CursorPage<crate::clob_history::ClobTradeRecord>> {
+        self.authenticated_clob
+            .trades_page(credentials, params)
+            .await
+    }
+
+    #[cfg(feature = "authenticated")]
+    pub async fn authenticated_orders_page(
+        &self,
+        credentials: &crate::auth::L2Credentials,
+        params: &crate::authenticated_clob::OrderParams,
+    ) -> Result<crate::clob_history::CursorPage<crate::clob_history::OrderRecord>> {
+        self.authenticated_clob
+            .orders_page(credentials, params)
+            .await
+    }
+
+    #[cfg(feature = "authenticated")]
+    pub async fn authenticated_order(
+        &self,
+        credentials: &crate::auth::L2Credentials,
+        order_id: &str,
+    ) -> Result<crate::clob_history::OrderRecord> {
+        self.authenticated_clob.order(credentials, order_id).await
     }
 
     pub async fn wallet_dossier(

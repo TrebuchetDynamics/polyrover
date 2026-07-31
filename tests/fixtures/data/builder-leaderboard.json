@@ -1,0 +1,11 @@
+[
+  {
+    "rank": "1",
+    "builder": "example",
+    "builderCode": "code",
+    "volume": 123.45,
+    "activeUsers": 7,
+    "verified": true,
+    "builderLogo": "https://example.invalid/logo.png"
+  }
+]

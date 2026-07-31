@@ -10,8 +10,13 @@ use std::{
 use chrono::{TimeZone, Utc};
 
 use polyrover::{
-    clob::{BatchMarketRequest, BatchPriceHistoryParams, PriceHistoryParams},
-    data::{ActivityParams, ClosedPositionParams, LeaderboardParams, TradeParams},
+    clob::{
+        BatchMarketRequest, BatchPriceHistoryParams, BuilderTradeParams, PriceHistoryParams,
+        RebateParams,
+    },
+    data::{
+        ActivityParams, ClosedPositionParams, ComboActivityParams, LeaderboardParams, TradeParams,
+    },
     gamma::{MarketKeysetParams, MarketParams, SearchParams, TaxonomyParams, TeamParams},
     simulation::Request,
     stream::{parse_market_event, MarketEvent},
@@ -1114,6 +1119,350 @@ async fn client_simulates_fills_with_documented_fee_category() {
 
     assert_eq!(fill.estimated_taker_fee, "1.75");
     server.join().unwrap();
+}
+
+#[test]
+fn gamma_history_params_preserve_all_documented_filters() {
+    use polyrover::gamma::{EventKeysetParams, EventParams, MarketKeysetParams, MarketParams};
+
+    let markets = MarketParams {
+        ids: vec![1],
+        market_maker_address: "0xmaker".into(),
+        cyom: Some(true),
+        uma_resolution_status: "resolved".into(),
+        game_id: "game-1".into(),
+        rewards_min_size: Some("10".parse().unwrap()),
+        question_ids: vec!["question-1".into()],
+        ..Default::default()
+    }
+    .path("/markets");
+    for expected in [
+        "id=1",
+        "market_maker_address=0xmaker",
+        "cyom=true",
+        "uma_resolution_status=resolved",
+        "game_id=game-1",
+        "rewards_min_size=10",
+        "question_ids=question-1",
+    ] {
+        assert!(markets.contains(expected), "missing {expected}: {markets}");
+    }
+
+    let market_page = MarketKeysetParams {
+        ids: vec![2],
+        decimalized: Some(true),
+        question_ids: vec!["question-2".into()],
+        market_maker_address: "0xmaker".into(),
+        tag_ids: vec![3, 4],
+        tag_match: "all".into(),
+        cyom: Some(false),
+        rfq_enabled: Some(true),
+        uma_resolution_status: "proposed".into(),
+        game_id: "game-2".into(),
+        locale: "en".into(),
+        ..Default::default()
+    }
+    .path("/markets/keyset");
+    for expected in [
+        "id=2",
+        "decimalized=true",
+        "question_ids=question-2",
+        "market_maker_address=0xmaker",
+        "tag_id=3",
+        "tag_id=4",
+        "tag_match=all",
+        "cyom=false",
+        "rfq_enabled=true",
+        "uma_resolution_status=proposed",
+        "game_id=game-2",
+        "locale=en",
+    ] {
+        assert!(
+            market_page.contains(expected),
+            "missing {expected}: {market_page}"
+        );
+    }
+
+    let events = EventParams {
+        exclude_tag_ids: vec![8],
+        tag_slug: "crypto".into(),
+        related_tags: Some(true),
+        featured: Some(true),
+        cyom: Some(false),
+        include_chat: Some(true),
+        include_template: Some(true),
+        recurrence: "daily".into(),
+        liquidity_min: Some("1".parse().unwrap()),
+        liquidity_max: Some("2".parse().unwrap()),
+        volume_min: Some("3".parse().unwrap()),
+        volume_max: Some("4".parse().unwrap()),
+        ..Default::default()
+    }
+    .path("/events");
+    for expected in [
+        "exclude_tag_id=8",
+        "tag_slug=crypto",
+        "related_tags=true",
+        "featured=true",
+        "cyom=false",
+        "include_chat=true",
+        "include_template=true",
+        "recurrence=daily",
+        "liquidity_min=1",
+        "liquidity_max=2",
+        "volume_min=3",
+        "volume_max=4",
+    ] {
+        assert!(events.contains(expected), "missing {expected}: {events}");
+    }
+
+    let event_page = EventKeysetParams {
+        featured: Some(true),
+        cyom: Some(false),
+        title_search: "bitcoin".into(),
+        liquidity_min: Some("1".parse().unwrap()),
+        liquidity_max: Some("2".parse().unwrap()),
+        volume_min: Some("3".parse().unwrap()),
+        volume_max: Some("4".parse().unwrap()),
+        tag_ids: vec![5],
+        tag_slug: "crypto".into(),
+        exclude_tag_ids: vec![6],
+        related_tags: Some(true),
+        tag_match: "all".into(),
+        series_ids: vec![7],
+        game_ids: vec![8],
+        event_date: "2026-07-31".into(),
+        event_week: Some(31),
+        featured_order: Some(true),
+        recurrence: "weekly".into(),
+        created_by: vec!["creator".into()],
+        parent_event_id: Some(9),
+        include_children: Some(true),
+        partner_slug: "partner".into(),
+        include_chat: Some(true),
+        include_template: Some(true),
+        include_best_lines: Some(true),
+        locale: "en".into(),
+        ..Default::default()
+    }
+    .path("/events/keyset");
+    for expected in [
+        "featured=true",
+        "cyom=false",
+        "title_search=bitcoin",
+        "liquidity_min=1",
+        "liquidity_max=2",
+        "volume_min=3",
+        "volume_max=4",
+        "tag_id=5",
+        "tag_slug=crypto",
+        "exclude_tag_id=6",
+        "related_tags=true",
+        "tag_match=all",
+        "series_id=7",
+        "game_id=8",
+        "event_date=2026-07-31",
+        "event_week=31",
+        "featured_order=true",
+        "recurrence=weekly",
+        "created_by=creator",
+        "parent_event_id=9",
+        "include_children=true",
+        "partner_slug=partner",
+        "include_chat=true",
+        "include_template=true",
+        "include_best_lines=true",
+        "locale=en",
+    ] {
+        assert!(
+            event_page.contains(expected),
+            "missing {expected}: {event_page}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn client_reads_public_builder_trade_history() {
+    let (clob_base_url, received, server) = serve_json(
+        r#"{"limit":300,"next_cursor":"next==","count":1,"data":[{"id":"trade-1","builder":"0xabc","sizeUsdc":"12.34"}]}"#,
+    );
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let page = client
+        .builder_trades(&BuilderTradeParams {
+            builder_code: "0xabc".into(),
+            after: Some(1),
+            next_cursor: "cursor==".into(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(page.next_cursor, "next==");
+    assert_eq!(page.data[0].size_usdc, "12.34");
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /builder/trades?builder_code=0xabc&after=1&next_cursor=cursor%3D%3D "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_public_dated_rebates() {
+    let (clob_base_url, received, server) = serve_json(
+        r#"[{"date":"2026-02-27","condition_id":"condition","maker_address":"0xmaker","rebated_fees_usdc":"0.237519"}]"#,
+    );
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let rows = client
+        .rebates(&RebateParams {
+            date: "2026-02-27".into(),
+            maker_address: "0xmaker".into(),
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(rows[0].rebated_fees_usdc, "0.237519");
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /rebates/current?date=2026-02-27&maker_address=0xmaker "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_combo_activity_cursor_page() {
+    let (data_base_url, received, server) = serve_json(
+        r#"{"activity":[{"id":"combo-1","type":"Split","amount_usdc":12.34}],"pagination":{"limit":50,"offset":0,"has_more":true,"next_cursor":"opaque=="}}"#,
+    );
+    let client = Client::new(ClientConfig {
+        data_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let page = client
+        .combo_activity(&ComboActivityParams {
+            user: "0xuser".into(),
+            market_ids: vec!["market-1".into(), "market-2".into()],
+            limit: Some(50),
+            offset: Some(25),
+            cursor: "cursor==".into(),
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(page.activity[0].amount_usdc, "12.34");
+    assert_eq!(page.pagination.next_cursor, "opaque==");
+    assert!(received.recv().unwrap().starts_with(
+        "GET /v1/activity/combos?user=0xuser&market_id=market-1%2Cmarket-2&limit=50&offset=25&cursor=cursor%3D%3D "
+    ));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_builder_leaderboard_page() {
+    let (data_base_url, received, server) =
+        serve_json(r#"[{"rank":"1","builder":"example","volume":123.45,"activeUsers":7}]"#);
+    let client = Client::new(ClientConfig {
+        data_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let rows = client
+        .builder_leaderboard(&polyrover::data::BuilderLeaderboardParams {
+            time_period: "MONTH".into(),
+            limit: Some(25),
+            offset: Some(50),
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(rows[0].volume, "123.45");
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /v1/builders/leaderboard?timePeriod=MONTH&limit=25&offset=50 "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_builder_volume_time_series() {
+    let (data_base_url, received, server) = serve_json(
+        r#"[{"dt":"2025-11-15T00:00:00Z","builder":"example","volume":123.45,"activeUsers":7}]"#,
+    );
+    let client = Client::new(ClientConfig {
+        data_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let rows = client
+        .builder_volume(&polyrover::data::BuilderVolumeParams {
+            time_period: "ALL".into(),
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(rows[0].volume, "123.45");
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("GET /v1/builders/volume?timePeriod=ALL "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_pages_closed_gamma_events_with_date_filters() {
+    use polyrover::gamma::{EventKeysetParams, EventParams};
+
+    let (gamma_base_url, received, server) =
+        serve_json(r#"{"events":[{"id":"event-1","closed":true}],"next_cursor":"opaque=="}"#);
+    let client = Client::new(ClientConfig {
+        gamma_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let page = client
+        .event_page(&EventKeysetParams {
+            limit: Some(20),
+            after_cursor: "cursor==".into(),
+            closed: Some(true),
+            start_date_min: "2026-01-01T00:00:00Z".into(),
+            end_date_max: "2026-12-31T23:59:59Z".into(),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(page.events[0].id, "event-1");
+    assert_eq!(page.next_cursor, "opaque==");
+    let request = received.recv().unwrap();
+    assert!(request.starts_with("GET /events/keyset?"));
+    assert!(request.contains("after_cursor=cursor%3D%3D"));
+    assert!(request.contains("closed=true"));
+    assert!(request.contains("start_date_min=2026-01-01T00%3A00%3A00Z"));
+    assert!(request.contains("end_date_max=2026-12-31T23%3A59%3A59Z"));
+    server.join().unwrap();
+
+    let offset = EventParams {
+        archived: Some(true),
+        start_date_max: "2025-12-31T23:59:59Z".into(),
+        ..Default::default()
+    };
+    let path = offset.path("/events");
+    assert!(path.contains("archived=true"));
+    assert!(path.contains("start_date_max=2025-12-31T23%3A59%3A59Z"));
 }
 
 #[test]

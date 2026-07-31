@@ -12,11 +12,22 @@ use crate::{Error, Result};
 
 type HmacSha256 = Hmac<Sha256>;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Default, Eq, PartialEq, Deserialize)]
 pub struct ApiKey {
     pub key: String,
     pub secret: String,
     pub passphrase: String,
+}
+
+impl std::fmt::Debug for ApiKey {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ApiKey")
+            .field("key", &redact(&self.key))
+            .field("secret", &"<redacted>")
+            .field("passphrase", &"<redacted>")
+            .finish()
+    }
 }
 
 impl ApiKey {
@@ -38,6 +49,34 @@ impl ApiKey {
     }
 }
 
+#[derive(Clone, Default, Eq, PartialEq)]
+pub struct L2Credentials {
+    pub address: String,
+    pub api_key: ApiKey,
+}
+
+impl L2Credentials {
+    pub fn validate(&self) -> Result<()> {
+        let raw = self.address.strip_prefix("0x").unwrap_or_default();
+        if raw.len() != 40 || !raw.chars().all(|character| character.is_ascii_hexdigit()) {
+            return Err(Error::Invalid(
+                "L2 address must be a 20-byte 0x address".into(),
+            ));
+        }
+        self.api_key.validate()
+    }
+}
+
+impl std::fmt::Debug for L2Credentials {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("L2Credentials")
+            .field("address", &self.address)
+            .field("api_key", &self.api_key)
+            .finish()
+    }
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RedactedApiKey {
     pub key: String,
@@ -46,17 +85,21 @@ pub struct RedactedApiKey {
 }
 
 pub fn build_l2_headers(
-    api_key: &ApiKey,
+    credentials: &L2Credentials,
     timestamp: i64,
     method: &str,
     path: &str,
     body: Option<&str>,
 ) -> Result<BTreeMap<String, String>> {
-    api_key.validate()?;
-    let signature = sign_hmac(&api_key.secret, timestamp, method, path, body);
+    credentials.validate()?;
+    let signature = sign_hmac(&credentials.api_key.secret, timestamp, method, path, body);
     Ok(BTreeMap::from([
-        ("POLY_API_KEY".into(), api_key.key.clone()),
-        ("POLY_PASSPHRASE".into(), api_key.passphrase.clone()),
+        ("POLY_ADDRESS".into(), credentials.address.clone()),
+        ("POLY_API_KEY".into(), credentials.api_key.key.clone()),
+        (
+            "POLY_PASSPHRASE".into(),
+            credentials.api_key.passphrase.clone(),
+        ),
         ("POLY_TIMESTAMP".into(), timestamp.to_string()),
         ("POLY_SIGNATURE".into(), signature),
     ]))
@@ -111,20 +154,53 @@ fn redact(value: &str) -> String {
 mod tests {
     use super::*;
 
+    fn credentials() -> L2Credentials {
+        L2Credentials {
+            address: "0x1234567890123456789012345678901234567890".into(),
+            api_key: ApiKey {
+                key: "abcdefghijkl".into(),
+                secret: general_purpose::STANDARD.encode("secret"),
+                passphrase: "sensitive-passphrase-value".into(),
+            },
+        }
+    }
+
+    #[test]
+    fn l2_headers_include_address_and_never_debug_secrets() {
+        let credentials = credentials();
+        let headers = build_l2_headers(&credentials, 123, "GET", "/data/trades", None).unwrap();
+        assert_eq!(headers["POLY_ADDRESS"], credentials.address);
+        assert_eq!(headers["POLY_API_KEY"], credentials.api_key.key);
+        assert_eq!(headers["POLY_TIMESTAMP"], "123");
+        let debug = format!("{credentials:?}");
+        assert!(!debug.contains(&credentials.api_key.secret));
+        assert!(!debug.contains(&credentials.api_key.passphrase));
+        assert!(debug.contains("<redacted>"));
+    }
+
+    #[test]
+    fn l2_credentials_reject_invalid_addresses() {
+        let mut credentials = credentials();
+        credentials.address = "0xshort".into();
+        assert!(credentials.validate().is_err());
+    }
+
     #[test]
     fn l2_headers_sign_timestamp_method_path_body() {
-        let key = ApiKey {
-            key: "k".into(),
-            secret: general_purpose::STANDARD.encode("secret"),
-            passphrase: "p".into(),
-        };
-        let headers = build_l2_headers(&key, 123, "GET", "/orders", Some("{}")).unwrap();
-        assert_eq!(headers["POLY_API_KEY"], "k");
-        assert_eq!(headers["POLY_PASSPHRASE"], "p");
+        let credentials = credentials();
+        let headers = build_l2_headers(&credentials, 123, "GET", "/orders", Some("{}")).unwrap();
+        assert_eq!(headers["POLY_API_KEY"], "abcdefghijkl");
+        assert_eq!(headers["POLY_PASSPHRASE"], "sensitive-passphrase-value");
         assert_eq!(headers["POLY_TIMESTAMP"], "123");
         assert_eq!(
             headers["POLY_SIGNATURE"],
-            sign_hmac(&key.secret, 123, "GET", "/orders", Some("{}"))
+            sign_hmac(
+                &credentials.api_key.secret,
+                123,
+                "GET",
+                "/orders",
+                Some("{}")
+            )
         );
     }
 

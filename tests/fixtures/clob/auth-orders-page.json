@@ -1,0 +1,24 @@
+{
+  "limit": 100,
+  "next_cursor": "MTAw",
+  "count": 1,
+  "data": [
+    {
+      "id": "order-1",
+      "status": "ORDER_STATUS_LIVE",
+      "owner": "owner-1",
+      "maker_address": "0x1234567890123456789012345678901234567890",
+      "market": "market-1",
+      "asset_id": "asset-1",
+      "side": "BUY",
+      "original_size": "100",
+      "size_matched": "10",
+      "price": "0.5",
+      "outcome": "YES",
+      "expiration": "1735689600",
+      "order_type": "GTC",
+      "associate_trades": [],
+      "created_at": 1700000000
+    }
+  ]
+}

@@ -4,7 +4,7 @@
     {
       "path": "clob/price-history.json",
       "kind": "contract-example",
-      "source": "https://github.com/dilettante-trading/polyoxide/blob/8c1d8745/docs/specs/clob/markets.md#get-price-history",
+      "source": "https://docs.polymarket.com/api-reference/markets/get-prices-history",
       "retrievedAt": "2026-07-28",
       "endpoint": "GET https://clob.polymarket.com/prices-history",
       "containsLiveData": false
@@ -12,7 +12,7 @@
     {
       "path": "clob/batch-price-history.json",
       "kind": "contract-example",
-      "source": "https://github.com/dilettante-trading/polyoxide/blob/8c1d8745/docs/specs/clob/markets.md#get-batch-price-history",
+      "source": "https://docs.polymarket.com/api-reference/markets/get-batch-prices-history",
       "retrievedAt": "2026-07-28",
       "endpoint": "POST https://clob.polymarket.com/batch-prices-history",
       "containsLiveData": false
@@ -79,6 +79,38 @@
       "source": "https://docs.polymarket.com/api-reference/sports/list-teams",
       "retrievedAt": "2026-07-28",
       "endpoint": "GET https://gamma-api.polymarket.com/teams",
+      "containsLiveData": false
+    },
+    {
+      "path": "data/builder-volume.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/builders/get-daily-builder-volume-time-series",
+      "retrievedAt": "2026-07-31",
+      "endpoint": "GET https://data-api.polymarket.com/v1/builders/volume",
+      "containsLiveData": false
+    },
+    {
+      "path": "clob/auth-trades-page.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/trade/get-trades",
+      "retrievedAt": "2026-07-31",
+      "endpoint": "GET https://clob.polymarket.com/data/trades",
+      "containsLiveData": false
+    },
+    {
+      "path": "clob/auth-orders-page.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/trade/get-user-orders",
+      "retrievedAt": "2026-07-31",
+      "endpoint": "GET https://clob.polymarket.com/data/orders",
+      "containsLiveData": false
+    },
+    {
+      "path": "data/builder-leaderboard.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/builders/get-aggregated-builder-leaderboard",
+      "retrievedAt": "2026-07-31",
+      "endpoint": "GET https://data-api.polymarket.com/v1/builders/leaderboard",
       "containsLiveData": false
     }
   ]

@@ -4,8 +4,8 @@ use crate::{
     query::escape,
     transport,
     types::{
-        Event, GammaSeries, GammaTag, HealthResponse, Market, MarketPage, SearchResponse,
-        SportMetadata, SportsMarketTypes, Team,
+        Event, EventPage, GammaSeries, GammaTag, HealthResponse, Market, MarketPage,
+        SearchResponse, SportMetadata, SportsMarketTypes, Team,
     },
     Result,
 };
@@ -74,6 +74,12 @@ impl Client {
         self.transport.get_json(&params.path("/events")).await
     }
 
+    pub async fn event_page(&self, params: &EventKeysetParams) -> Result<EventPage> {
+        self.transport
+            .get_json(&params.path("/events/keyset"))
+            .await
+    }
+
     pub async fn event_by_id(&self, id: &str) -> Result<Event> {
         self.transport
             .get_json(&format!("/events/{}", escape(id)))
@@ -137,12 +143,14 @@ pub struct MarketParams {
     pub offset: Option<u32>,
     pub order: Option<String>,
     pub ascending: Option<bool>,
+    pub ids: Vec<i64>,
     /// Conservatively chunk to at most 100 slugs.
     pub slug: Vec<String>,
     /// Conservatively chunk to at most 60 IDs.
     pub condition_ids: Vec<String>,
     /// Conservatively chunk to at most 50 IDs.
     pub clob_token_ids: Vec<String>,
+    pub market_maker_address: String,
     pub active: Option<bool>,
     /// Omission behaves as `false` upstream; set explicitly when status matters.
     pub closed: Option<bool>,
@@ -164,6 +172,11 @@ pub struct MarketParams {
     /// ISO 8601 date bound forwarded unchanged.
     pub end_date_max: String,
     pub related_tags: Option<bool>,
+    pub cyom: Option<bool>,
+    pub uma_resolution_status: String,
+    pub game_id: String,
+    pub rewards_min_size: Option<rust_decimal::Decimal>,
+    pub question_ids: Vec<String>,
     pub include_tag: Option<bool>,
     /// Repeated query parameters subject to the documented URL ceiling.
     pub sports_market_types: Vec<String>,
@@ -183,15 +196,20 @@ pub struct MarketKeysetParams {
     pub after_cursor: String,
     pub order: Option<String>,
     pub ascending: Option<bool>,
+    pub ids: Vec<i64>,
     pub slug: Vec<String>,
+    pub decimalized: Option<bool>,
     /// Conservatively chunk to at most 60 IDs.
     pub condition_ids: Vec<String>,
     /// Conservatively chunk to at most 50 IDs.
     pub clob_token_ids: Vec<String>,
+    pub question_ids: Vec<String>,
+    pub market_maker_address: String,
     pub active: Option<bool>,
     /// Omission behaves as `false` upstream; set explicitly when status matters.
     pub closed: Option<bool>,
     pub tag_id: Option<i64>,
+    pub tag_ids: Vec<i64>,
     /// Gamma metadata threshold, not executable CLOB depth.
     pub liquidity_num_min: Option<rust_decimal::Decimal>,
     /// Gamma metadata threshold, not executable CLOB depth.
@@ -209,7 +227,13 @@ pub struct MarketKeysetParams {
     /// ISO 8601 date bound forwarded unchanged.
     pub end_date_max: String,
     pub related_tags: Option<bool>,
+    pub tag_match: String,
+    pub cyom: Option<bool>,
+    pub rfq_enabled: Option<bool>,
+    pub uma_resolution_status: String,
+    pub game_id: String,
     pub include_tag: Option<bool>,
+    pub locale: String,
     /// Repeated query parameters subject to the documented URL ceiling.
     pub sports_market_types: Vec<String>,
 }
@@ -220,10 +244,74 @@ pub struct EventParams {
     pub offset: Option<u32>,
     pub order: Option<String>,
     pub ascending: Option<bool>,
+    pub ids: Vec<i64>,
     pub slug: Vec<String>,
     pub active: Option<bool>,
     pub closed: Option<bool>,
+    pub archived: Option<bool>,
     pub tag_id: Option<i64>,
+    pub exclude_tag_ids: Vec<i64>,
+    pub tag_slug: String,
+    pub related_tags: Option<bool>,
+    pub featured: Option<bool>,
+    pub cyom: Option<bool>,
+    pub include_chat: Option<bool>,
+    pub include_template: Option<bool>,
+    pub recurrence: String,
+    pub liquidity_min: Option<rust_decimal::Decimal>,
+    pub liquidity_max: Option<rust_decimal::Decimal>,
+    pub volume_min: Option<rust_decimal::Decimal>,
+    pub volume_max: Option<rust_decimal::Decimal>,
+    pub start_date_min: String,
+    pub start_date_max: String,
+    pub end_date_min: String,
+    pub end_date_max: String,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct EventKeysetParams {
+    /// Official maximum: 500.
+    pub limit: Option<u32>,
+    /// Opaque value copied unchanged from the prior `next_cursor`.
+    pub after_cursor: String,
+    pub order: Option<String>,
+    pub ascending: Option<bool>,
+    pub ids: Vec<i64>,
+    pub slug: Vec<String>,
+    pub closed: Option<bool>,
+    pub live: Option<bool>,
+    pub featured: Option<bool>,
+    pub cyom: Option<bool>,
+    pub title_search: String,
+    pub liquidity_min: Option<rust_decimal::Decimal>,
+    pub liquidity_max: Option<rust_decimal::Decimal>,
+    pub volume_min: Option<rust_decimal::Decimal>,
+    pub volume_max: Option<rust_decimal::Decimal>,
+    pub start_date_min: String,
+    pub start_date_max: String,
+    pub end_date_min: String,
+    pub end_date_max: String,
+    pub start_time_min: String,
+    pub start_time_max: String,
+    pub tag_ids: Vec<i64>,
+    pub tag_slug: String,
+    pub exclude_tag_ids: Vec<i64>,
+    pub related_tags: Option<bool>,
+    pub tag_match: String,
+    pub series_ids: Vec<i64>,
+    pub game_ids: Vec<i64>,
+    pub event_date: String,
+    pub event_week: Option<i64>,
+    pub featured_order: Option<bool>,
+    pub recurrence: String,
+    pub created_by: Vec<String>,
+    pub parent_event_id: Option<i64>,
+    pub include_children: Option<bool>,
+    pub partner_slug: String,
+    pub include_chat: Option<bool>,
+    pub include_template: Option<bool>,
+    pub include_best_lines: Option<bool>,
+    pub locale: String,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -271,11 +359,18 @@ impl MarketParams {
         q.opt_str("end_date_min", Some(self.end_date_min.as_str()));
         q.opt_str("end_date_max", Some(self.end_date_max.as_str()));
         q.opt("related_tags", self.related_tags);
-        q.opt("include_tag", self.include_tag);
+        q.opt("cyom", self.cyom);
+        q.pair("uma_resolution_status", &self.uma_resolution_status);
+        q.pair("game_id", &self.game_id);
         q.list("sports_market_types", &self.sports_market_types);
+        q.opt("rewards_min_size", self.rewards_min_size);
+        q.list("question_ids", &self.question_ids);
+        q.opt("include_tag", self.include_tag);
+        q.ids("id", &self.ids);
         q.list("slug", &self.slug);
         q.list("condition_ids", &self.condition_ids);
         q.list("clob_token_ids", &self.clob_token_ids);
+        q.pair("market_maker_address", &self.market_maker_address);
         q.finish()
     }
 }
@@ -287,9 +382,17 @@ impl MarketKeysetParams {
         q.pair("after_cursor", &self.after_cursor);
         q.opt_str("order", self.order.as_deref());
         q.opt("ascending", self.ascending);
-        q.opt("active", self.active);
+        q.ids("id", &self.ids);
+        q.list("slug", &self.slug);
         q.opt("closed", self.closed);
+        q.opt("decimalized", self.decimalized);
+        q.list("clob_token_ids", &self.clob_token_ids);
+        q.list("condition_ids", &self.condition_ids);
+        q.list("question_ids", &self.question_ids);
+        q.pair("market_maker_address", &self.market_maker_address);
+        q.opt("active", self.active);
         q.opt("tag_id", self.tag_id);
+        q.ids("tag_id", &self.tag_ids);
         q.opt("liquidity_num_min", self.liquidity_num_min);
         q.opt("liquidity_num_max", self.liquidity_num_max);
         q.opt("volume_num_min", self.volume_num_min);
@@ -299,11 +402,14 @@ impl MarketKeysetParams {
         q.opt_str("end_date_min", Some(self.end_date_min.as_str()));
         q.opt_str("end_date_max", Some(self.end_date_max.as_str()));
         q.opt("related_tags", self.related_tags);
-        q.opt("include_tag", self.include_tag);
+        q.pair("tag_match", &self.tag_match);
+        q.opt("cyom", self.cyom);
+        q.opt("rfq_enabled", self.rfq_enabled);
+        q.pair("uma_resolution_status", &self.uma_resolution_status);
+        q.pair("game_id", &self.game_id);
         q.list("sports_market_types", &self.sports_market_types);
-        q.list("slug", &self.slug);
-        q.list("condition_ids", &self.condition_ids);
-        q.list("clob_token_ids", &self.clob_token_ids);
+        q.opt("include_tag", self.include_tag);
+        q.pair("locale", &self.locale);
         q.finish()
     }
 }
@@ -315,10 +421,75 @@ impl EventParams {
         q.opt("offset", self.offset);
         q.opt_str("order", self.order.as_deref());
         q.opt("ascending", self.ascending);
-        q.opt("active", self.active);
-        q.opt("closed", self.closed);
+        q.ids("id", &self.ids);
         q.opt("tag_id", self.tag_id);
+        q.ids("exclude_tag_id", &self.exclude_tag_ids);
         q.list("slug", &self.slug);
+        q.pair("tag_slug", &self.tag_slug);
+        q.opt("related_tags", self.related_tags);
+        q.opt("active", self.active);
+        q.opt("archived", self.archived);
+        q.opt("featured", self.featured);
+        q.opt("cyom", self.cyom);
+        q.opt("include_chat", self.include_chat);
+        q.opt("include_template", self.include_template);
+        q.pair("recurrence", &self.recurrence);
+        q.opt("closed", self.closed);
+        q.opt("liquidity_min", self.liquidity_min);
+        q.opt("liquidity_max", self.liquidity_max);
+        q.opt("volume_min", self.volume_min);
+        q.opt("volume_max", self.volume_max);
+        q.opt_str("start_date_min", Some(&self.start_date_min));
+        q.opt_str("start_date_max", Some(&self.start_date_max));
+        q.opt_str("end_date_min", Some(&self.end_date_min));
+        q.opt_str("end_date_max", Some(&self.end_date_max));
+        q.finish()
+    }
+}
+
+impl EventKeysetParams {
+    pub fn path(&self, base: &str) -> String {
+        let mut q = Query::new(base);
+        q.opt("limit", self.limit);
+        q.pair("after_cursor", &self.after_cursor);
+        q.opt_str("order", self.order.as_deref());
+        q.opt("ascending", self.ascending);
+        q.ids("id", &self.ids);
+        q.list("slug", &self.slug);
+        q.opt("closed", self.closed);
+        q.opt("live", self.live);
+        q.opt("featured", self.featured);
+        q.opt("cyom", self.cyom);
+        q.pair("title_search", &self.title_search);
+        q.opt("liquidity_min", self.liquidity_min);
+        q.opt("liquidity_max", self.liquidity_max);
+        q.opt("volume_min", self.volume_min);
+        q.opt("volume_max", self.volume_max);
+        q.opt_str("start_date_min", Some(&self.start_date_min));
+        q.opt_str("start_date_max", Some(&self.start_date_max));
+        q.opt_str("end_date_min", Some(&self.end_date_min));
+        q.opt_str("end_date_max", Some(&self.end_date_max));
+        q.opt_str("start_time_min", Some(&self.start_time_min));
+        q.opt_str("start_time_max", Some(&self.start_time_max));
+        q.ids("tag_id", &self.tag_ids);
+        q.pair("tag_slug", &self.tag_slug);
+        q.ids("exclude_tag_id", &self.exclude_tag_ids);
+        q.opt("related_tags", self.related_tags);
+        q.pair("tag_match", &self.tag_match);
+        q.ids("series_id", &self.series_ids);
+        q.ids("game_id", &self.game_ids);
+        q.pair("event_date", &self.event_date);
+        q.opt("event_week", self.event_week);
+        q.opt("featured_order", self.featured_order);
+        q.pair("recurrence", &self.recurrence);
+        q.list("created_by", &self.created_by);
+        q.opt("parent_event_id", self.parent_event_id);
+        q.opt("include_children", self.include_children);
+        q.pair("partner_slug", &self.partner_slug);
+        q.opt("include_chat", self.include_chat);
+        q.opt("include_template", self.include_template);
+        q.opt("include_best_lines", self.include_best_lines);
+        q.pair("locale", &self.locale);
         q.finish()
     }
 }
@@ -391,6 +562,11 @@ impl Query {
     fn list(&mut self, key: &str, values: &[String]) {
         for value in values {
             self.pair(key, value);
+        }
+    }
+    fn ids(&mut self, key: &str, values: &[i64]) {
+        for value in values {
+            self.pair(key, &value.to_string());
         }
     }
     fn finish(self) -> String {
