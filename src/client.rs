@@ -258,6 +258,38 @@ impl Client {
         self.data.trader_leaderboard_with(params).await
     }
 
+    pub async fn wallet_dossier(
+        &self,
+        params: &crate::wallet_dossier::WalletDossierParams,
+    ) -> Result<crate::wallet_dossier::WalletDossier> {
+        if params.user.trim().is_empty() || !(1..=500).contains(&params.limit) {
+            return Err(crate::Error::Invalid(
+                "wallet dossier requires user and limit 1..=500".into(),
+            ));
+        }
+        let user = params.user.as_str();
+        let limit = params.limit;
+        let (positions, closed_positions, trades, activity, portfolio_value, markets_traded) = tokio::try_join!(
+            self.data.current_positions(user, limit),
+            self.data.closed_positions(user, limit),
+            self.data.trades(user, limit),
+            self.data.activity(user, limit),
+            self.data.total_value(user),
+            self.data.markets_traded(user),
+        )?;
+        crate::wallet_dossier::build_wallet_dossier(crate::wallet_dossier::WalletDossierInput {
+            wallet: params.user.clone(),
+            as_of: chrono::Utc::now(),
+            limit,
+            positions,
+            closed_positions,
+            trades,
+            activity,
+            portfolio_value,
+            markets_traded,
+        })
+    }
+
     pub async fn health(&self) -> ClientHealth {
         ClientHealth {
             gamma: health_label(self.gamma.health_check().await.is_ok()),

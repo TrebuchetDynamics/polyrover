@@ -1446,7 +1446,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: None,
         extension: true,
         summary: "Intel wallet dossier.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "intel.wallet.score",

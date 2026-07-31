@@ -81,6 +81,9 @@ pub mod user_stream;
 #[cfg(feature = "wallet")]
 #[path = "capabilities/wallet.rs"]
 pub mod wallet;
+#[cfg(feature = "public")]
+#[path = "research/wallet_dossier.rs"]
+pub mod wallet_dossier;
 
 #[cfg(feature = "public")]
 pub use client::{Client, ClientConfig, ClientHealth};

@@ -2359,11 +2359,17 @@
       "cliCommand": null,
       "extension": true,
       "summary": "Intel wallet dossier.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "wallet_dossier::build_wallet_dossier",
+        "Client::wallet_dossier"
+      ],
+      "tests": [
+        "tests/wallet_dossier.rs",
+        "tests/client.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "Transparent bounded aggregation over public Data API rows; no prediction, alerting, persistence, or execution."
     },
     {
       "id": "intel.wallet.score",

@@ -60,6 +60,41 @@ fn serve_sequence(
     (format!("http://{address}"), received, handle)
 }
 
+fn serve_by_path(
+    responses: Vec<(&'static str, &'static str)>,
+) -> (String, mpsc::Receiver<String>, thread::JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let count = responses.len();
+    let (requests, received) = mpsc::channel();
+    let handle = thread::spawn(move || {
+        for _ in 0..count {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut raw = [0; 8192];
+            let length = stream.read(&mut raw).unwrap();
+            let request = String::from_utf8_lossy(&raw[..length]).into_owned();
+            let target = request
+                .lines()
+                .next()
+                .and_then(|line| line.split_whitespace().nth(1))
+                .unwrap_or("");
+            let body = responses
+                .iter()
+                .find(|(prefix, _)| target.starts_with(prefix))
+                .map(|(_, body)| *body)
+                .unwrap_or("{}");
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            requests.send(request).unwrap();
+        }
+    });
+    (format!("http://{address}"), received, handle)
+}
+
 #[tokio::test]
 async fn client_searches_markets_through_one_public_interface() {
     let (gamma_base_url, received, server) =
@@ -269,6 +304,44 @@ async fn public_batch_read_post_retries_429() {
 
     assert_eq!(books.len(), 1);
     assert_eq!(received.iter().take(2).count(), 2);
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_builds_wallet_dossier_from_public_data_only() {
+    let responses = vec![
+        (
+            "/positions",
+            r#"[{"size":10,"curPrice":0.6,"unrealizedPnl":1.5}]"#,
+        ),
+        (
+            "/closed-positions",
+            r#"[{"realizedPnl":4,"timestamp":"1800000000"}]"#,
+        ),
+        (
+            "/trades",
+            r#"[{"market":"m1","price":0.5,"size":10,"timestamp":"1800000000"}]"#,
+        ),
+        ("/activity", r#"[{"type":"TRADE"}]"#),
+        ("/value", r#"{"value":6}"#),
+        ("/traded", r#"{"traded":3}"#),
+    ];
+    let (data_base_url, requests, server) = serve_by_path(responses);
+    let client = Client::new(ClientConfig {
+        data_base_url,
+        ..Default::default()
+    })
+    .unwrap();
+
+    let dossier = client
+        .wallet_dossier(&polyrover::wallet_dossier::WalletDossierParams::new(
+            "0xwallet", 100,
+        ))
+        .await
+        .unwrap();
+
+    assert_eq!(dossier.wallet, "0xwallet");
+    assert_eq!(requests.iter().take(6).count(), 6);
     server.join().unwrap();
 }
 
