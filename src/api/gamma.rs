@@ -107,6 +107,26 @@ pub struct MarketParams {
     /// Omission behaves as `false` upstream; set explicitly when status matters.
     pub closed: Option<bool>,
     pub tag_id: Option<i64>,
+    /// Gamma metadata threshold, not executable CLOB depth.
+    pub liquidity_num_min: Option<rust_decimal::Decimal>,
+    /// Gamma metadata threshold, not executable CLOB depth.
+    pub liquidity_num_max: Option<rust_decimal::Decimal>,
+    /// Gamma metadata threshold, not executable CLOB volume.
+    pub volume_num_min: Option<rust_decimal::Decimal>,
+    /// Gamma metadata threshold, not executable CLOB volume.
+    pub volume_num_max: Option<rust_decimal::Decimal>,
+    /// ISO 8601 date bound forwarded unchanged.
+    pub start_date_min: String,
+    /// ISO 8601 date bound forwarded unchanged.
+    pub start_date_max: String,
+    /// ISO 8601 date bound forwarded unchanged.
+    pub end_date_min: String,
+    /// ISO 8601 date bound forwarded unchanged.
+    pub end_date_max: String,
+    pub related_tags: Option<bool>,
+    pub include_tag: Option<bool>,
+    /// Repeated query parameters subject to the documented URL ceiling.
+    pub sports_market_types: Vec<String>,
 }
 
 /// Keyset-paginated Gamma market query.
@@ -132,6 +152,26 @@ pub struct MarketKeysetParams {
     /// Omission behaves as `false` upstream; set explicitly when status matters.
     pub closed: Option<bool>,
     pub tag_id: Option<i64>,
+    /// Gamma metadata threshold, not executable CLOB depth.
+    pub liquidity_num_min: Option<rust_decimal::Decimal>,
+    /// Gamma metadata threshold, not executable CLOB depth.
+    pub liquidity_num_max: Option<rust_decimal::Decimal>,
+    /// Gamma metadata threshold, not executable CLOB volume.
+    pub volume_num_min: Option<rust_decimal::Decimal>,
+    /// Gamma metadata threshold, not executable CLOB volume.
+    pub volume_num_max: Option<rust_decimal::Decimal>,
+    /// ISO 8601 date bound forwarded unchanged.
+    pub start_date_min: String,
+    /// ISO 8601 date bound forwarded unchanged.
+    pub start_date_max: String,
+    /// ISO 8601 date bound forwarded unchanged.
+    pub end_date_min: String,
+    /// ISO 8601 date bound forwarded unchanged.
+    pub end_date_max: String,
+    pub related_tags: Option<bool>,
+    pub include_tag: Option<bool>,
+    /// Repeated query parameters subject to the documented URL ceiling.
+    pub sports_market_types: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -166,6 +206,17 @@ impl MarketParams {
         q.opt("active", self.active);
         q.opt("closed", self.closed);
         q.opt("tag_id", self.tag_id);
+        q.opt("liquidity_num_min", self.liquidity_num_min);
+        q.opt("liquidity_num_max", self.liquidity_num_max);
+        q.opt("volume_num_min", self.volume_num_min);
+        q.opt("volume_num_max", self.volume_num_max);
+        q.opt_str("start_date_min", Some(self.start_date_min.as_str()));
+        q.opt_str("start_date_max", Some(self.start_date_max.as_str()));
+        q.opt_str("end_date_min", Some(self.end_date_min.as_str()));
+        q.opt_str("end_date_max", Some(self.end_date_max.as_str()));
+        q.opt("related_tags", self.related_tags);
+        q.opt("include_tag", self.include_tag);
+        q.list("sports_market_types", &self.sports_market_types);
         q.list("slug", &self.slug);
         q.list("condition_ids", &self.condition_ids);
         q.list("clob_token_ids", &self.clob_token_ids);
@@ -183,6 +234,17 @@ impl MarketKeysetParams {
         q.opt("active", self.active);
         q.opt("closed", self.closed);
         q.opt("tag_id", self.tag_id);
+        q.opt("liquidity_num_min", self.liquidity_num_min);
+        q.opt("liquidity_num_max", self.liquidity_num_max);
+        q.opt("volume_num_min", self.volume_num_min);
+        q.opt("volume_num_max", self.volume_num_max);
+        q.opt_str("start_date_min", Some(self.start_date_min.as_str()));
+        q.opt_str("start_date_max", Some(self.start_date_max.as_str()));
+        q.opt_str("end_date_min", Some(self.end_date_min.as_str()));
+        q.opt_str("end_date_max", Some(self.end_date_max.as_str()));
+        q.opt("related_tags", self.related_tags);
+        q.opt("include_tag", self.include_tag);
+        q.list("sports_market_types", &self.sports_market_types);
         q.list("slug", &self.slug);
         q.list("condition_ids", &self.condition_ids);
         q.list("clob_token_ids", &self.clob_token_ids);
@@ -278,6 +340,41 @@ mod tests {
         }
         .path("/markets");
         assert_eq!(path, "/markets?limit=5&active=true&slug=will%20btc");
+    }
+
+    #[test]
+    fn market_screening_filters_encode_for_offset_and_keyset_queries() {
+        use rust_decimal::Decimal;
+
+        let params = MarketParams {
+            liquidity_num_min: Some(Decimal::new(1000, 0)),
+            volume_num_min: Some(Decimal::new(5000, 0)),
+            start_date_min: "2026-01-01T00:00:00Z".into(),
+            end_date_max: "2026-12-31T23:59:59Z".into(),
+            related_tags: Some(true),
+            include_tag: Some(true),
+            sports_market_types: vec!["moneyline".into(), "spread".into()],
+            ..Default::default()
+        };
+        let path = params.path("/markets");
+        assert!(path.contains("liquidity_num_min=1000"));
+        assert!(path.contains("volume_num_min=5000"));
+        assert!(path.contains("start_date_min=2026-01-01T00%3A00%3A00Z"));
+        assert!(path.contains("end_date_max=2026-12-31T23%3A59%3A59Z"));
+        assert!(path.contains("related_tags=true"));
+        assert!(path.contains("include_tag=true"));
+        assert_eq!(path.matches("sports_market_types=").count(), 2);
+
+        let keyset = MarketKeysetParams {
+            after_cursor: "opaque==".into(),
+            liquidity_num_max: Some(Decimal::new(2500, 0)),
+            volume_num_max: Some(Decimal::new(9000, 0)),
+            ..Default::default()
+        };
+        let path = keyset.path("/markets/keyset");
+        assert!(path.contains("after_cursor=opaque%3D%3D"));
+        assert!(path.contains("liquidity_num_max=2500"));
+        assert!(path.contains("volume_num_max=9000"));
     }
 
     #[test]

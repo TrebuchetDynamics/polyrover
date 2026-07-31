@@ -28,6 +28,10 @@ Taxonomy parity does not imply implementation parity.
   or mixed-status results must set it explicitly.
 - Gamma keyset cursors are opaque. Preserve `next_cursor` byte-for-byte as the
   next `after_cursor`; the documented keyset `limit` maximum is 1000.
+- Offset and keyset market queries accept Gamma liquidity/volume metadata
+  thresholds, ISO 8601 date bounds, tag flags, and repeated sports-market types.
+  These are discovery filters—not executable CLOB depth—and date values are
+  forwarded unchanged. Repeated sports types count toward the URL ceiling.
 - Polyoxide observed an approximately 8 KiB Gamma URL ceiling and uses
   conservative chunks of 100 slugs, 50 CLOB token IDs, and 60 condition IDs.
   These are empirical safe sizes, not upstream protocol guarantees.
