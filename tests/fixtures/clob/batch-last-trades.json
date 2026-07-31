@@ -1,0 +1,4 @@
+[
+  {"token_id": "token-1", "price": "0.45", "side": "BUY"},
+  {"token_id": "token-2", "price": 0.52, "side": "SELL"}
+]

@@ -10,7 +10,7 @@ use std::{
 use chrono::{TimeZone, Utc};
 
 use polyrover::{
-    clob::{BatchPriceHistoryParams, PriceHistoryParams},
+    clob::{BatchMarketRequest, BatchPriceHistoryParams, PriceHistoryParams},
     data::{ActivityParams, ClosedPositionParams, LeaderboardParams, TradeParams},
     gamma::{MarketKeysetParams, MarketParams, SearchParams},
     simulation::Request,
@@ -128,6 +128,118 @@ async fn client_reads_clob_books_in_one_batch() {
     assert!(request.contains(r#"{"token_id":"token-1"}"#));
     assert!(request.contains(r#"{"token_id":"token-2"}"#));
     server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_batch_prices_as_decimal_text() {
+    let (clob_base_url, received, server) =
+        serve_json(r#"{"token-1":{"BUY":0.45},"token-2":{"SELL":"0.52"}}"#);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let rows = client
+        .batch_prices(&[
+            BatchMarketRequest::new("token-1", "BUY"),
+            BatchMarketRequest::new("token-2", "SELL"),
+        ])
+        .await
+        .unwrap();
+
+    assert_eq!(rows["token-1"]["BUY"], "0.45");
+    assert_eq!(rows["token-2"]["SELL"], "0.52");
+    let request = received.recv().unwrap();
+    assert!(request.starts_with("POST /prices "));
+    assert!(request.contains(r#""token_id":"token-1""#));
+    assert!(request.contains(r#""side":"BUY""#));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_batch_midpoints_as_decimal_text() {
+    let (clob_base_url, received, server) = serve_json(r#"{"token-1":"0.45","token-2":0.52}"#);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let rows = client
+        .batch_midpoints(&[
+            BatchMarketRequest::new("token-1", ""),
+            BatchMarketRequest::new("token-2", ""),
+        ])
+        .await
+        .unwrap();
+
+    assert_eq!(rows["token-1"], "0.45");
+    assert_eq!(rows["token-2"], "0.52");
+    assert!(received.recv().unwrap().starts_with("POST /midpoints "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_batch_spreads_as_decimal_text() {
+    let (clob_base_url, received, server) = serve_json(r#"{"token-1":"0.02","token-2":0.015}"#);
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let rows = client
+        .batch_spreads(&[
+            BatchMarketRequest::new("token-1", ""),
+            BatchMarketRequest::new("token-2", ""),
+        ])
+        .await
+        .unwrap();
+
+    assert_eq!(rows["token-1"], "0.02");
+    assert_eq!(rows["token-2"], "0.015");
+    assert!(received.recv().unwrap().starts_with("POST /spreads "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn client_reads_batch_last_trades_as_decimal_text() {
+    let (clob_base_url, received, server) = serve_json(
+        r#"[{"token_id":"token-1","price":"0.45","side":"BUY"},{"token_id":"token-2","price":0.52,"side":"SELL"}]"#,
+    );
+    let client = Client::new(ClientConfig {
+        clob_base_url,
+        ..ClientConfig::default()
+    })
+    .unwrap();
+
+    let rows = client
+        .batch_last_trades(&[
+            BatchMarketRequest::new("token-1", ""),
+            BatchMarketRequest::new("token-2", ""),
+        ])
+        .await
+        .unwrap();
+
+    assert_eq!(rows[0].price, "0.45");
+    assert_eq!(rows[1].price, "0.52");
+    assert!(received
+        .recv()
+        .unwrap()
+        .starts_with("POST /last-trades-prices "));
+    server.join().unwrap();
+}
+
+#[tokio::test]
+async fn batch_context_rejects_empty_requests_and_invalid_price_sides() {
+    let client = polyrover::clob::Client::new("http://127.0.0.1:1").unwrap();
+    assert!(client.batch_midpoints(&[]).await.is_err());
+    let error = client
+        .batch_prices(&[BatchMarketRequest::new("token-1", "hold")])
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("BUY or SELL"));
 }
 
 #[tokio::test]

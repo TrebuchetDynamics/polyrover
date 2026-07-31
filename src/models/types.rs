@@ -382,6 +382,16 @@ pub struct ClobMarketByTokenResponse {
     pub secondary_token_id: String,
 }
 
+#[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
+pub struct ClobLastTradePrice {
+    #[serde(default)]
+    pub token_id: String,
+    #[serde(default, deserialize_with = "string_or_number")]
+    pub price: String,
+    #[serde(default)]
+    pub side: String,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
 pub struct ClobPricePoint {
     #[serde(rename = "t")]

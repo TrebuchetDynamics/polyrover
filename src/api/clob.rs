@@ -1,6 +1,9 @@
 //! CLOB REST client: public order books, prices, and market metadata.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{
     gamma,
@@ -8,9 +11,10 @@ use crate::{
     query::escape,
     transport,
     types::{
-        first_price, ClobBatchPriceHistory, ClobFeeRate, ClobMarket, ClobMarketByTokenResponse,
-        ClobMarketOutcome, ClobNegRiskInfo, ClobOrderBook, ClobPaginatedMarkets, ClobPriceHistory,
-        ClobServerTime, ClobTickSize, CLOB_OUTCOME_RESOLVED, CLOB_OUTCOME_UNRESOLVED,
+        first_price, ClobBatchPriceHistory, ClobFeeRate, ClobLastTradePrice, ClobMarket,
+        ClobMarketByTokenResponse, ClobMarketOutcome, ClobNegRiskInfo, ClobOrderBook,
+        ClobPaginatedMarkets, ClobPriceHistory, ClobServerTime, ClobTickSize,
+        CLOB_OUTCOME_RESOLVED, CLOB_OUTCOME_UNRESOLVED,
     },
     Error, Result,
 };
@@ -39,6 +43,22 @@ pub struct PriceHistoryParams {
 ///
 /// `markets` contains 1 to 20 CLOB asset IDs. The server—not Polyrover—must split
 /// larger jobs, schedule requests, resume failures, and persist returned points.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+pub struct BatchMarketRequest {
+    pub token_id: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub side: String,
+}
+
+impl BatchMarketRequest {
+    pub fn new(token_id: impl Into<String>, side: impl Into<String>) -> Self {
+        Self {
+            token_id: token_id.into(),
+            side: side.into().trim().to_ascii_uppercase(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
 pub struct BatchPriceHistoryParams {
     pub markets: Vec<String>,
@@ -148,6 +168,52 @@ impl Client {
         Ok(row.price)
     }
 
+    pub async fn batch_prices(
+        &self,
+        rows: &[BatchMarketRequest],
+    ) -> Result<BTreeMap<String, BTreeMap<String, String>>> {
+        validate_batch_requests(rows, true)?;
+        let raw = self
+            .transport
+            .post_json_idempotent::<_, BTreeMap<String, BTreeMap<String, Value>>>("/prices", &rows)
+            .await?;
+        Ok(nested_scalar_map(raw))
+    }
+
+    pub async fn batch_midpoints(
+        &self,
+        rows: &[BatchMarketRequest],
+    ) -> Result<BTreeMap<String, String>> {
+        validate_batch_requests(rows, false)?;
+        let raw = self
+            .transport
+            .post_json_idempotent::<_, BTreeMap<String, Value>>("/midpoints", &rows)
+            .await?;
+        Ok(scalar_map(raw))
+    }
+
+    pub async fn batch_spreads(
+        &self,
+        rows: &[BatchMarketRequest],
+    ) -> Result<BTreeMap<String, String>> {
+        validate_batch_requests(rows, false)?;
+        let raw = self
+            .transport
+            .post_json_idempotent::<_, BTreeMap<String, Value>>("/spreads", &rows)
+            .await?;
+        Ok(scalar_map(raw))
+    }
+
+    pub async fn batch_last_trades(
+        &self,
+        rows: &[BatchMarketRequest],
+    ) -> Result<Vec<ClobLastTradePrice>> {
+        validate_batch_requests(rows, false)?;
+        self.transport
+            .post_json_idempotent("/last-trades-prices", &rows)
+            .await
+    }
+
     pub async fn midpoint(&self, token_id: &str) -> Result<String> {
         let row: MidpointResponse = self
             .transport
@@ -217,6 +283,39 @@ impl Client {
             .get_json(&cursor_path("/simplified-markets", next_cursor))
             .await
     }
+}
+
+fn validate_batch_requests(rows: &[BatchMarketRequest], require_side: bool) -> Result<()> {
+    if rows.is_empty() {
+        return Err(Error::Invalid(
+            "batch market request must not be empty".into(),
+        ));
+    }
+    for row in rows {
+        if row.token_id.trim().is_empty() {
+            return Err(Error::Invalid("batch market token_id is required".into()));
+        }
+        if require_side && !matches!(row.side.as_str(), "BUY" | "SELL") {
+            return Err(Error::Invalid(
+                "batch market side must be BUY or SELL".into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn scalar_map(raw: BTreeMap<String, Value>) -> BTreeMap<String, String> {
+    raw.into_iter()
+        .map(|(key, value)| (key, crate::jsonx::scalar_to_string(&value)))
+        .collect()
+}
+
+fn nested_scalar_map(
+    raw: BTreeMap<String, BTreeMap<String, Value>>,
+) -> BTreeMap<String, BTreeMap<String, String>> {
+    raw.into_iter()
+        .map(|(token, sides)| (token, scalar_map(sides)))
+        .collect()
 }
 
 #[derive(Serialize)]

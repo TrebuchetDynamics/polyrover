@@ -745,11 +745,17 @@
       ],
       "extension": false,
       "summary": "Clob last trades batch read.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "clob::Client::batch_last_trades",
+        "Client::batch_last_trades"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only atomic read; callers own chunk sizing and persistence. No upstream batch maximum is asserted."
     },
     {
       "id": "clob.market.read",
@@ -896,11 +902,17 @@
       ],
       "extension": false,
       "summary": "Clob midpoints batch read.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "clob::Client::batch_midpoints",
+        "Client::batch_midpoints"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only atomic read; callers own chunk sizing and persistence. No upstream batch maximum is asserted."
     },
     {
       "id": "clob.negRisk.read",
@@ -1338,11 +1350,17 @@
       ],
       "extension": false,
       "summary": "Clob prices batch read.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "clob::Client::batch_prices",
+        "Client::batch_prices"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only atomic read; callers own chunk sizing and persistence. No upstream batch maximum is asserted."
     },
     {
       "id": "clob.publicTrades.list",
@@ -1527,11 +1545,17 @@
       ],
       "extension": false,
       "summary": "Clob spreads batch read.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "clob::Client::batch_spreads",
+        "Client::batch_spreads"
+      ],
+      "tests": [
+        "tests/client.rs",
+        "tests/contracts.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "SDK-only atomic read; callers own chunk sizing and persistence. No upstream batch maximum is asserted."
     },
     {
       "id": "clob.tickSize.read",

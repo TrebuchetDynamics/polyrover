@@ -550,7 +550,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["clob", "last-trades"]),
         extension: false,
         summary: "Clob last trades batch read.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "clob.market.read",
@@ -634,7 +634,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["clob", "midpoints"]),
         extension: false,
         summary: "Clob midpoints batch read.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "clob.negRisk.read",
@@ -872,7 +872,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["clob", "batch-prices"]),
         extension: false,
         summary: "Clob prices batch read.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "clob.publicTrades.list",
@@ -984,7 +984,7 @@ const CAPABILITIES: &[Capability] = &[
         cli_command: Some(&["clob", "spreads"]),
         extension: false,
         summary: "Clob spreads batch read.",
-        status: CapabilityStatus::Planned,
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "clob.tickSize.read",

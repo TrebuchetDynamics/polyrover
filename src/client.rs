@@ -1,8 +1,10 @@
 //! Unified [`Client`] facade over the Gamma, CLOB, and Data API clients,
 //! plus aggregate health reporting.
 
+use std::collections::BTreeMap;
+
 use crate::{
-    clob::{self, BatchPriceHistoryParams, PriceHistoryParams},
+    clob::{self, BatchMarketRequest, BatchPriceHistoryParams, PriceHistoryParams},
     crypto_price,
     data::{self, ActivityParams, ClosedPositionParams, LeaderboardParams, TradeParams},
     data_types::{
@@ -12,8 +14,8 @@ use crate::{
     gamma::{self, MarketKeysetParams, MarketParams, SearchParams},
     simulation::{self, Request as SimulationRequest, ResultRow as SimulationResult},
     types::{
-        ClobBatchPriceHistory, ClobFeeRate, ClobOrderBook, ClobPriceHistory, Market, MarketPage,
-        SearchResponse,
+        ClobBatchPriceHistory, ClobFeeRate, ClobLastTradePrice, ClobOrderBook, ClobPriceHistory,
+        Market, MarketPage, SearchResponse,
     },
     Result,
 };
@@ -107,6 +109,34 @@ impl Client {
 
     pub async fn price(&self, token_id: &str, side: &str) -> Result<String> {
         self.clob.price(token_id, side).await
+    }
+
+    pub async fn batch_prices(
+        &self,
+        rows: &[BatchMarketRequest],
+    ) -> Result<BTreeMap<String, BTreeMap<String, String>>> {
+        self.clob.batch_prices(rows).await
+    }
+
+    pub async fn batch_midpoints(
+        &self,
+        rows: &[BatchMarketRequest],
+    ) -> Result<BTreeMap<String, String>> {
+        self.clob.batch_midpoints(rows).await
+    }
+
+    pub async fn batch_spreads(
+        &self,
+        rows: &[BatchMarketRequest],
+    ) -> Result<BTreeMap<String, String>> {
+        self.clob.batch_spreads(rows).await
+    }
+
+    pub async fn batch_last_trades(
+        &self,
+        rows: &[BatchMarketRequest],
+    ) -> Result<Vec<ClobLastTradePrice>> {
+        self.clob.batch_last_trades(rows).await
     }
 
     /// Returns the token-specific CLOB base fee in basis points.

@@ -16,6 +16,38 @@
       "retrievedAt": "2026-07-28",
       "endpoint": "POST https://clob.polymarket.com/batch-prices-history",
       "containsLiveData": false
+    },
+    {
+      "path": "clob/batch-prices.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/market-data/get-market-prices-request-body",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "POST https://clob.polymarket.com/prices",
+      "containsLiveData": false
+    },
+    {
+      "path": "clob/batch-midpoints.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/market-data/get-midpoint-prices-request-body",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "POST https://clob.polymarket.com/midpoints",
+      "containsLiveData": false
+    },
+    {
+      "path": "clob/batch-spreads.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/market-data/get-spreads",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "POST https://clob.polymarket.com/spreads",
+      "containsLiveData": false
+    },
+    {
+      "path": "clob/batch-last-trades.json",
+      "kind": "contract-example",
+      "source": "https://docs.polymarket.com/api-reference/market-data/get-last-trade-prices-request-body",
+      "retrievedAt": "2026-07-28",
+      "endpoint": "POST https://clob.polymarket.com/last-trades-prices",
+      "containsLiveData": false
     }
   ]
 }
