@@ -50,6 +50,9 @@ pub mod jsonx;
 #[path = "streaming/market_data.rs"]
 pub mod market_data;
 #[cfg(feature = "public")]
+#[path = "research/market_flow.rs"]
+pub mod market_flow;
+#[cfg(feature = "public")]
 #[path = "research/market_resolver.rs"]
 pub mod market_resolver;
 #[cfg(feature = "public")]

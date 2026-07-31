@@ -2310,7 +2310,7 @@
       "tier": "public",
       "service": "intel",
       "operation": "read",
-      "transport": "https",
+      "transport": "wss",
       "auth": [
         "none"
       ],
@@ -2319,11 +2319,15 @@
       "cliCommand": null,
       "extension": true,
       "summary": "Intel market flow read.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "status": "implemented",
+      "api": [
+        "market_flow::MarketFlowTracker"
+      ],
+      "tests": [
+        "tests/market_flow.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "Pure bounded summary over typed public market WSS events; no alerting, persistence, intent inference, or execution."
     },
     {
       "id": "intel.wallet.alerts",

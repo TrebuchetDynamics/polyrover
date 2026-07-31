@@ -217,6 +217,29 @@ Polyrover only supplies typed public data.
 
 </details>
 
+<details>
+<summary><strong>Current main: market-flow context</strong></summary>
+
+Feed typed tracked market events into a bounded per-asset window:
+
+```rust
+use polyrover::{market_flow::{MarketFlowConfig, MarketFlowTracker}, Decimal};
+
+let mut flow = MarketFlowTracker::new(MarketFlowConfig {
+    window_ms: 15 * 60 * 1_000,
+    large_trade_notional: Decimal::new(1_000, 0),
+    max_trades_per_asset: 10_000,
+})?;
+flow.observe_tracked(&tracked_event, observed_at_ms)?;
+let context = flow.snapshot("TOKEN_ID", observed_at_ms);
+```
+
+The result is descriptive public-flow context; not proof of intent,
+coordination, misconduct, or trading edge. The consumer still owns persistence,
+scheduling, and alerts.
+
+</details>
+
 Browse the [published v0.1.0 API documentation](https://docs.rs/polyrover/0.1.0/polyrover/)
 or the current-main [endpoint capability matrix](docs/endpoint-capability-matrix.md).
 
