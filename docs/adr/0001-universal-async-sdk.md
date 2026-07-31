@@ -5,10 +5,10 @@ Date: 2026-07-16
 
 ## Context
 
-Polyrover's canonical MegaBot consumer is Tokio-based, while the crate used
-blocking reqwest and Tungstenite behind thread bridges. The crate also retained
-authenticated, wallet, execution DTO, and bridge DTO surfaces despite being
-described as read-only.
+Polyrover's ecosystem is Tokio-based, while the crate used blocking reqwest
+and Tungstenite behind thread bridges. The crate also retained authenticated,
+wallet, execution DTO, and bridge DTO surfaces despite being described as
+read-only.
 
 ## Decision
 
@@ -29,6 +29,6 @@ private-key, relayer, or bridge execution method.
 ## Consequences
 
 Pre-1.0 callers must await network methods. No blocking facade is maintained.
-MegaBot compiles only `public`; Polygolem remains MegaBot's exclusive signing
-and execution boundary. Any future fund-moving capability requires a separate
-safety design and architecture approval.
+Read-only consumers should disable default features and enable only `public`.
+Any future fund-moving capability requires a separate safety design and
+architecture approval.

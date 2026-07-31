@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- The default Cargo feature remains `public`; MegaBot consumers continue to use `default-features = false, features = ["public"]`.
+- The default Cargo feature remains `public`; read-only consumers use `default-features = false, features = ["public"]`.
 - Add no private-key handling, signing, authentication expansion, order submission, cancellation, relayer calls, bridge transfers, wallet connection, or money movement.
 - Add no AI forecasts, news/OSINT scraping, copy trading, cross-venue execution, opportunity ranking, or profitability claims.
 - `opportunities.scan`, `intel.wallet.alerts`, and every execution capability remain planned.
@@ -20,7 +20,7 @@
 - Every derived result includes an observation timestamp, row count, source label, and cautious language.
 - Wallet and flow outputs describe public observations; they never label a person an insider, skilled trader, manipulator, or coordinated actor.
 - Ordinary tests never call public endpoints. Live canaries remain `#[ignore]` and require explicit operator input.
-- Every behavior change follows RED → GREEN → regression under `../docs/project/TDD-HARD-RULE.md`.
+- Every behavior change follows RED → GREEN → regression.
 - Do not commit, push, publish crates, create tags, or make a GitHub release unless the maintainer explicitly invokes the corresponding delivery action.
 
 ---
@@ -417,7 +417,7 @@ git commit -m "feat: add batch CLOB market context"
 - Modify: `src/lib.rs`
 - Modify: `README.md`
 - Test: `src/streaming/market_data.rs`
-- Validate consumer: `../rust-crypto-data/Cargo.toml`
+- Validate public type export: `tests/market_flow.rs`
 
 **Interfaces:**
 
@@ -563,21 +563,21 @@ RUSTDOCFLAGS='-D warnings' cargo doc --all-features --no-deps
 
 Expected: exact-boundary tests and the full Polyrover suite pass.
 
-- [ ] **Step 5: Validate the MegaBot public consumer**
-
-Run:
-
-```bash
-cargo test --manifest-path ../rust-crypto-data/Cargo.toml
-```
-
-Expected: passes. If compilation identifies a real `Liquidity`/`Depth` consumer, update only that consumer to compare/serialize Decimal values; do not introduce an f64 compatibility shim.
+- [ ] **Step 5: Validate the public Decimal export**
 
 Add this crate-root re-export to `src/lib.rs`:
 
 ```rust
 pub use rust_decimal::Decimal;
 ```
+
+Run:
+
+```bash
+cargo test --all-features --test market_flow
+```
+
+Expected: the public integration test compiles through `polyrover::Decimal` and passes.
 
 Update README limitations to state: `Streaming liquidity/depth and local simulation use Decimal internally; upstream wire values remain strings.`
 
@@ -2021,7 +2021,6 @@ cargo test --all-features
 cargo clippy --all-targets --all-features -- -D warnings
 cargo fmt --all -- --check
 RUSTDOCFLAGS='-D warnings' cargo doc --all-features --no-deps
-cargo test --manifest-path ../rust-crypto-data/Cargo.toml
 jq empty capabilities.json
 jq empty tests/fixtures/provenance.json
 python3 /home/xel/.agents/skills/beautify-github-readme/scripts/audit_readme.py README.md
@@ -2034,7 +2033,7 @@ Expected:
 
 - all deterministic tests pass;
 - live public canaries are ignored;
-- MegaBot's public-only consumer compiles/tests;
+- public-only integration tests compile and pass;
 - package verification succeeds;
 - package contents contain no `.env`, research output, vendored Polyoxide source, credentials, or generated logs;
 - the only worktree changes are the selected roadmap files;

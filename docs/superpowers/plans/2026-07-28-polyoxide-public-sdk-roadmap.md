@@ -10,13 +10,13 @@
 
 ## Global Constraints
 
-- MegaBot consumers continue to use `default-features = false, features = ["public"]`.
+- Read-only consumers use `default-features = false, features = ["public"]`.
 - Add no signing, order submission, cancellation, wallet, relayer, bridge transfer, credential, or private endpoint behavior.
 - Retry only `429 Too Many Requests` and `425 Too Early` automatically; do not automatically retry 5xx responses.
 - Retry read-only GET requests and explicitly named idempotent read POST requests only.
 - Keep live canaries ignored and absent from ordinary CI.
 - Preserve upstream decimal strings at serialization boundaries.
-- Use RED → GREEN for every behavior change under `docs/project/TDD-HARD-RULE.md`.
+- Use RED → GREEN → regression for every behavior change.
 - Do not add a downloader, scheduler, database, cache, alert system, or persistence layer.
 - Do not commit unless the maintainer explicitly requests it; use `git diff --check` as each task checkpoint.
 - Preserve unrelated untracked research artifacts.
