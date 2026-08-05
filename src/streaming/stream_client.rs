@@ -169,6 +169,14 @@ impl MarketWsClient {
                     reconnected = true;
                     continue;
                 }
+                ReadWake::Message(Some(Ok(Message::Close(_)))) => {
+                    if !self.config.reconnect {
+                        return Err(Error::WebSocket("websocket stream ended".into()));
+                    }
+                    self.reconnect_and_resubscribe().await?;
+                    reconnected = true;
+                    continue;
+                }
                 ReadWake::Message(Some(Ok(message))) => {
                     self.last_frame_at = Instant::now();
                     message
@@ -562,6 +570,40 @@ mod tests {
         let rows = client.read_raw(1).await.unwrap();
 
         assert_eq!(rows[0].event_type, "new_market");
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn reconnects_and_resubscribes_after_close_frame() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut socket = tungstenite::accept(stream).unwrap();
+            assert!(socket.read().unwrap().to_string().contains("token-1"));
+            socket.send(Message::Close(None)).unwrap();
+
+            let (stream, _) = listener.accept().unwrap();
+            let mut socket = tungstenite::accept(stream).unwrap();
+            assert!(socket.read().unwrap().to_string().contains("token-1"));
+            socket
+                .send(Message::Text(
+                    r#"{"event_type":"new_market","id":"market-after-close"}"#.into(),
+                ))
+                .unwrap();
+        });
+        let mut client = MarketWsClient::connect(Config {
+            url: format!("ws://{address}"),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+        client.subscribe_assets(&["token-1".into()]).await.unwrap();
+
+        let rows = client.read_raw(1).await.unwrap();
+
+        assert_eq!(rows[0].payload["id"], "market-after-close");
+        assert_eq!(client.stats().reconnects, 1);
         server.join().unwrap();
     }
 
