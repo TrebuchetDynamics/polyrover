@@ -47,8 +47,9 @@ Install the published v0.1.0 CLI from crates.io:
 cargo install polyrover
 ```
 
-This checkout is the v0.2.0 release candidate. Until it is published, use the
-Git dependency shown below for the new SDK-only research APIs.
+This checkout is ahead of the released v0.2.0 and includes the Unreleased
+changes listed in [`CHANGELOG.md`](CHANGELOG.md). Use the Git dependency shown
+below for those SDK-only research APIs until the next release is published.
 
 Find a market, copy one outcome token ID from its `clob_token_ids`, then inspect
 and simulate against its current book:
