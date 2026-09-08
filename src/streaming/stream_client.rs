@@ -1,7 +1,10 @@
 //! Resilient market WSS subscription client: connection lifecycle, ping,
 //! pong-timeout detection, reconnect, and event deduplication.
 
-use std::{collections::VecDeque, time::Duration};
+use std::{
+    collections::{HashSet, VecDeque},
+    time::Duration,
+};
 
 use futures_util::{SinkExt, StreamExt};
 use tokio::{
@@ -17,7 +20,7 @@ use tokio_tungstenite::{
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 use crate::{
-    market_data::{TrackedEvent, Tracker},
+    market_data::{MarketUpdate, TrackedEvent, Tracker},
     stream::{
         market_subscription, parse_market_event, split_array, Config, Deduplicator, MarketEvent,
         RawMessage, StreamStats,
@@ -31,6 +34,8 @@ pub struct MarketRead {
     pub received_valid_frame: bool,
     pub invalid_frame: bool,
     pub reconnected: bool,
+    /// Local UTC time immediately after the socket yields the frame, before decoding.
+    pub received_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Clone, Debug)]
@@ -39,6 +44,8 @@ pub struct TrackedMarketRead {
     pub received_valid_frame: bool,
     pub invalid_frame: bool,
     pub reconnected: bool,
+    /// Local UTC time immediately after the socket yields the frame, before decoding.
+    pub received_at: chrono::DateTime<chrono::Utc>,
 }
 
 pub struct MarketWsClient {
@@ -47,6 +54,7 @@ pub struct MarketWsClient {
     stats: StreamStats,
     dedup: Deduplicator,
     tracker: Tracker,
+    seeded_books: HashSet<String>,
     subscriptions: Vec<String>,
     last_ping: Instant,
     last_frame_at: Instant,
@@ -78,6 +86,7 @@ impl MarketWsClient {
             stats,
             dedup: Deduplicator::new(4096, 120_000),
             tracker: Tracker::new(),
+            seeded_books: HashSet::new(),
             subscriptions: Vec::new(),
             last_ping: Instant::now(),
             last_frame_at: Instant::now(),
@@ -144,7 +153,9 @@ impl MarketWsClient {
         }
     }
 
-    pub async fn read_raw_with_status(&mut self, observed_at_ms: i64) -> Result<MarketRead> {
+    /// The legacy timestamp argument is retained for source compatibility; socket receipt
+    /// time now supplies both raw-message timestamps and the returned frame timestamp.
+    pub async fn read_raw_with_status(&mut self, _observed_at_ms: i64) -> Result<MarketRead> {
         let mut reconnected = false;
         loop {
             let message = match self.next_wake().await {
@@ -198,12 +209,15 @@ impl MarketWsClient {
                     continue;
                 }
             };
+            let received_at = chrono::Utc::now();
+            let observed_at_ms = received_at.timestamp_millis();
             if matches!(&message, Message::Ping(_) | Message::Pong(_)) {
                 return Ok(MarketRead {
                     messages: Vec::new(),
                     received_valid_frame: true,
                     invalid_frame: false,
                     reconnected,
+                    received_at,
                 });
             }
             let text = message_text(message)?;
@@ -213,6 +227,7 @@ impl MarketWsClient {
                     received_valid_frame: true,
                     invalid_frame: false,
                     reconnected,
+                    received_at,
                 });
             }
             if !self.dedup.process_at(&text, observed_at_ms) {
@@ -222,6 +237,7 @@ impl MarketWsClient {
                     received_valid_frame: true,
                     invalid_frame: false,
                     reconnected,
+                    received_at,
                 });
             }
             let values = raw_values_from_text(&text);
@@ -232,6 +248,7 @@ impl MarketWsClient {
                     received_valid_frame: false,
                     invalid_frame: true,
                     reconnected,
+                    received_at,
                 });
             }
             let mut messages = Vec::with_capacity(values.len());
@@ -245,6 +262,7 @@ impl MarketWsClient {
                 received_valid_frame: true,
                 invalid_frame: false,
                 reconnected,
+                received_at,
             });
         }
     }
@@ -255,6 +273,9 @@ impl MarketWsClient {
 
     async fn reconnect_and_resubscribe(&mut self) -> Result<()> {
         self.stats.mark_disconnected();
+        self.tracker = Tracker::new();
+        self.seeded_books.clear();
+        self.dedup = Deduplicator::new(4096, 120_000);
         self.socket = Self::dial_with_retries(&self.config).await?;
         self.stats.mark_connected();
         self.stats.record_reconnect();
@@ -310,13 +331,32 @@ impl MarketWsClient {
             .map(|raw| parse_market_event(&raw.payload.to_string()))
             .collect::<Result<Vec<_>>>()?
             .into_iter()
-            .map(|event| self.tracker.apply_event(event))
+            .map(|event| {
+                if let MarketEvent::Book(book) = &event {
+                    self.seeded_books.insert(book.asset_id.clone());
+                }
+                let mut tracked = self.tracker.apply_event(event);
+                tracked
+                    .snapshots
+                    .retain(|snapshot| self.seeded_books.contains(&snapshot.asset_id));
+                // Standalone quotes/tick changes remain useful, but cannot imply depth.
+                if let MarketUpdate::TopOfBook(snapshot) | MarketUpdate::TickSizeChange(snapshot) =
+                    &mut tracked.update
+                {
+                    if !self.seeded_books.contains(&snapshot.asset_id) {
+                        snapshot.bids.clear();
+                        snapshot.asks.clear();
+                    }
+                }
+                tracked
+            })
             .collect();
         Ok(TrackedMarketRead {
             events,
             received_valid_frame: read.received_valid_frame,
             invalid_frame: read.invalid_frame,
             reconnected: read.reconnected,
+            received_at: read.received_at,
         })
     }
 
@@ -654,7 +694,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn reconnect_preserves_dedup_so_replayed_messages_stay_suppressed() {
+    async fn reconnect_resets_dedup_so_initial_books_are_delivered() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
         let server = thread::spawn(move || {
@@ -691,13 +731,13 @@ mod tests {
         client.subscribe_assets(&["token-1".into()]).await.unwrap();
 
         let mut seen = Vec::new();
-        while seen.len() < 2 {
+        while seen.len() < 3 {
             for raw in client.read_raw(1).await.unwrap() {
                 seen.push(raw.payload["hash"].as_str().unwrap_or_default().to_string());
             }
         }
-        assert_eq!(seen, vec!["h1", "h2"]);
-        assert_eq!(client.stats().duplicate_messages, 1);
+        assert_eq!(seen, vec!["h1", "h1", "h2"]);
+        assert_eq!(client.stats().duplicate_messages, 0);
         server.join().unwrap();
     }
 
@@ -733,6 +773,83 @@ mod tests {
         assert_eq!(rows[0].event_type, "new_market");
         client.close().await.unwrap();
         server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn reconnect_requires_new_book_and_accepts_identical_snapshot() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let book = r#"{"event_type":"book","asset_id":"token-1","bids":[{"price":"0.4","size":"10"}],"asks":[{"price":"0.6","size":"20"}]}"#;
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            socket.next().await.unwrap().unwrap();
+            socket.send(Message::Text(book.into())).await.unwrap();
+            socket.close(None).await.unwrap();
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            socket.next().await.unwrap().unwrap();
+            socket.send(Message::Text(r#"{"event_type":"price_change","price_changes":[{"asset_id":"token-1","side":"BUY","price":"0.3","size":"5"}]}"#.into())).await.unwrap();
+            socket.send(Message::Text(book.into())).await.unwrap();
+            socket.next().await;
+        });
+        let mut client = MarketWsClient::connect(Config {
+            url: format!("ws://{address}"),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+        client.subscribe_assets(&["token-1".into()]).await.unwrap();
+        let first = client.read_tracked_with_status(1).await.unwrap();
+        assert_eq!(first.events[0].snapshots.len(), 1);
+        assert!(first.received_at.timestamp_millis() > 1);
+        let delta = client.read_tracked_with_status(1).await.unwrap();
+        assert!(delta.reconnected);
+        assert!(
+            matches!(&delta.events[0].update, MarketUpdate::PriceChanges(changes) if changes.len() == 1)
+        );
+        assert!(
+            delta.events[0].snapshots.is_empty(),
+            "delta cannot reconstruct depth after reconnect"
+        );
+        let fresh = client.read_tracked_with_status(1).await.unwrap();
+        assert_eq!(fresh.events.len(), 1, "reconnect must reset deduplication");
+        assert_eq!(fresh.events[0].snapshots[0].bids.len(), 1);
+        client.close().await.unwrap();
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn raw_timestamp_is_frame_receipt_not_callers_old_clock() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            let sent_at = chrono::Utc::now().timestamp_millis();
+            socket
+                .send(Message::Text(
+                    r#"{"event_type":"new_market","id":"m"}"#.into(),
+                ))
+                .await
+                .unwrap();
+            socket.next().await;
+            sent_at
+        });
+        let mut client = MarketWsClient::connect(Config {
+            url: format!("ws://{address}"),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+        let read = client.read_raw_with_status(1).await.unwrap();
+        client.close().await.unwrap();
+        let sent_at = server.await.unwrap();
+        assert!(read.messages[0].observed_at_ms >= sent_at);
+        assert_eq!(
+            read.messages[0].observed_at_ms,
+            read.received_at.timestamp_millis()
+        );
     }
 
     #[tokio::test(start_paused = true)]

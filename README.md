@@ -441,3 +441,18 @@ Tests use local fixtures and require no live credentials.
 ## License
 
 Licensed under the [MIT License](LICENSE).
+
+### Market stream receipt and reconnect semantics
+
+`MarketRead` and `TrackedMarketRead` expose `received_at`: local UTC time when
+the socket yields a frame, before decoding. Raw messages use the same receipt
+rounded to milliseconds. The legacy read-method timestamp argument is retained
+for compatibility but no longer overrides socket receipt time. This is application
+receipt time, not exchange event time or a kernel packet timestamp.
+
+Reconnect clears the tracked book and frame deduplication cache. Replayed events
+may therefore be delivered again; durable consumers should remain idempotent.
+Tracked snapshots require a full book for each asset on the current connection;
+price/trade updates remain available before that seed, while standalone quote
+and tick updates carry no reconstructed depth. The standalone `Tracker` remains
+an explicitly caller-managed state machine.
