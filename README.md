@@ -456,3 +456,8 @@ Tracked snapshots require a full book for each asset on the current connection;
 price/trade updates remain available before that seed, while standalone quote
 and tick updates carry no reconstructed depth. The standalone `Tracker` remains
 an explicitly caller-managed state machine.
+
+Cancelling a market read preserves a pending reconnect notification for the next
+returned frame. A replacement socket becomes active only after resubscription
+finishes; cancelling a dial or subscription causes the next read to retry the
+replacement. Reconnect statistics count fully subscribed replacements.

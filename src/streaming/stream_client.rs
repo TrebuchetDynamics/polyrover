@@ -55,6 +55,8 @@ pub struct MarketWsClient {
     dedup: Deduplicator,
     tracker: Tracker,
     seeded_books: HashSet<String>,
+    reconnect_required: bool,
+    reconnect_pending: bool,
     subscriptions: Vec<String>,
     last_ping: Instant,
     last_frame_at: Instant,
@@ -87,6 +89,8 @@ impl MarketWsClient {
             dedup: Deduplicator::new(4096, 120_000),
             tracker: Tracker::new(),
             seeded_books: HashSet::new(),
+            reconnect_required: false,
+            reconnect_pending: false,
             subscriptions: Vec::new(),
             last_ping: Instant::now(),
             last_frame_at: Instant::now(),
@@ -156,16 +160,17 @@ impl MarketWsClient {
     /// The legacy timestamp argument is retained for source compatibility; socket receipt
     /// time now supplies both raw-message timestamps and the returned frame timestamp.
     pub async fn read_raw_with_status(&mut self, _observed_at_ms: i64) -> Result<MarketRead> {
-        let mut reconnected = false;
         loop {
+            if self.reconnect_required {
+                self.reconnect_and_resubscribe().await?;
+            }
             let message = match self.next_wake().await {
                 ReadWake::Ping => {
                     if let Err(err) = self.ping().await {
                         if !self.config.reconnect {
                             return Err(err);
                         }
-                        self.reconnect_and_resubscribe().await?;
-                        reconnected = true;
+                        self.reconnect_required = true;
                     }
                     continue;
                 }
@@ -176,16 +181,14 @@ impl MarketWsClient {
                             self.config.pong_timeout_secs
                         )));
                     }
-                    self.reconnect_and_resubscribe().await?;
-                    reconnected = true;
+                    self.reconnect_required = true;
                     continue;
                 }
                 ReadWake::Message(Some(Ok(Message::Close(_)))) => {
                     if !self.config.reconnect {
                         return Err(Error::WebSocket("websocket stream ended".into()));
                     }
-                    self.reconnect_and_resubscribe().await?;
-                    reconnected = true;
+                    self.reconnect_required = true;
                     continue;
                 }
                 ReadWake::Message(Some(Ok(message))) => {
@@ -196,20 +199,19 @@ impl MarketWsClient {
                     if !self.config.reconnect {
                         return Err(ws_err(err));
                     }
-                    self.reconnect_and_resubscribe().await?;
-                    reconnected = true;
+                    self.reconnect_required = true;
                     continue;
                 }
                 ReadWake::Message(None) => {
                     if !self.config.reconnect {
                         return Err(Error::WebSocket("websocket stream ended".into()));
                     }
-                    self.reconnect_and_resubscribe().await?;
-                    reconnected = true;
+                    self.reconnect_required = true;
                     continue;
                 }
             };
             let received_at = chrono::Utc::now();
+            let reconnected = std::mem::take(&mut self.reconnect_pending);
             let observed_at_ms = received_at.timestamp_millis();
             if matches!(&message, Message::Ping(_) | Message::Pong(_)) {
                 return Ok(MarketRead {
@@ -276,17 +278,24 @@ impl MarketWsClient {
         self.tracker = Tracker::new();
         self.seeded_books.clear();
         self.dedup = Deduplicator::new(4096, 120_000);
-        self.socket = Self::dial_with_retries(&self.config).await?;
+        // Keep the old socket installed until the replacement is subscribed. If
+        // this future is cancelled at either await, the next read retries the
+        // entire replacement instead of using a half-initialized connection.
+        let mut socket = Self::dial_with_retries(&self.config).await?;
+        if !self.subscriptions.is_empty() {
+            let msg = market_subscription(&self.subscriptions, &self.config)?;
+            socket
+                .send(Message::Text(msg.to_string().into()))
+                .await
+                .map_err(ws_err)?;
+        }
+        self.socket = socket;
         self.stats.mark_connected();
         self.stats.record_reconnect();
         self.last_ping = Instant::now();
         self.last_frame_at = Instant::now();
-        if self.subscriptions.is_empty() {
-            return Ok(());
-        }
-        let subscriptions = self.subscriptions.clone();
-        self.subscribe_assets(&subscriptions).await?;
-        tokio::task::yield_now().await;
+        self.reconnect_required = false;
+        self.reconnect_pending = true;
         Ok(())
     }
 
@@ -773,6 +782,105 @@ mod tests {
         assert_eq!(rows[0].event_type, "new_market");
         client.close().await.unwrap();
         server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn cancelled_reconnect_dial_is_retried_with_subscription() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            socket.next().await.unwrap().unwrap();
+            socket.close(None).await.unwrap();
+            // Hold the replacement before its WebSocket handshake completes.
+            let (pending, _) = listener.accept().await.unwrap();
+            ready_tx.send(()).unwrap();
+            release_rx.await.unwrap();
+            drop(pending);
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            assert!(socket
+                .next()
+                .await
+                .unwrap()
+                .unwrap()
+                .to_string()
+                .contains("token-1"));
+            socket.send(Message::Text("PONG".into())).await.unwrap();
+            socket.next().await;
+        });
+        let mut client = MarketWsClient::connect(Config {
+            url: format!("ws://{address}"),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+        client.subscribe_assets(&["token-1".into()]).await.unwrap();
+        tokio::select! {
+            result = client.read_raw_with_status(1) => panic!("unexpected read: {result:?}"),
+            result = ready_rx => result.unwrap(),
+        }
+        release_tx.send(()).unwrap();
+        let read = tokio::time::timeout(Duration::from_secs(5), client.read_raw_with_status(1))
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(read.reconnected);
+        assert_eq!(client.stats().reconnects, 1);
+        client.close().await.unwrap();
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn cancelled_read_preserves_completed_reconnect_boundary() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            socket.next().await.unwrap().unwrap();
+            socket.close(None).await.unwrap();
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+            assert!(socket
+                .next()
+                .await
+                .unwrap()
+                .unwrap()
+                .to_string()
+                .contains("token-1"));
+            ready_tx.send(()).unwrap();
+            release_rx.await.unwrap();
+            socket.send(Message::Text("PONG".into())).await.unwrap();
+            socket.send(Message::Text("PONG".into())).await.unwrap();
+            socket.next().await;
+        });
+        let mut client = MarketWsClient::connect(Config {
+            url: format!("ws://{address}"),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+        client.subscribe_assets(&["token-1".into()]).await.unwrap();
+        tokio::select! {
+            result = client.read_raw_with_status(1) => panic!("unexpected read: {result:?}"),
+            result = ready_rx => result.unwrap(),
+        }
+        release_tx.send(()).unwrap();
+        let read = client.read_raw_with_status(1).await.unwrap();
+        assert!(
+            read.reconnected,
+            "cancellation must not erase the connection boundary"
+        );
+        assert_eq!(client.stats().reconnects, 1);
+        assert!(!client.read_raw_with_status(1).await.unwrap().reconnected);
+        client.close().await.unwrap();
+        server.await.unwrap();
     }
 
     #[tokio::test]
