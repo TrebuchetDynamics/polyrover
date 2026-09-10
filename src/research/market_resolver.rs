@@ -327,6 +327,7 @@ pub fn crypto_window_slug(asset: &str, timeframe: &str, window_start: DateTime<U
         "DOGE" => "doge",
         "BNB" => "bnb",
         "HYPE" => "hype",
+        "ZEC" => "zec",
         _ => return String::new(),
     };
     if !matches!(timeframe, "5m" | "15m" | "4h") {
