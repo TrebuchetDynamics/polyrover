@@ -382,12 +382,18 @@ pub fn extract_key(data: &str) -> Option<String> {
     let size = str_field(&value, "size");
     let market = str_field(&value, "market");
     let timestamp = str_field(&value, "timestamp");
+    // The venue timestamp is part of every key: venue replays are
+    // byte-identical (same timestamp) so they stay suppressed, while genuine
+    // new events - including a book state returning to a prior hash, or two
+    // trades at the same price and size - carry new timestamps and survive.
     match event_type.as_str() {
-        "book" | "tick_size_change" if !hash.is_empty() => Some(format!("{event_type}:{hash}")),
-        "price_change" if !hash.is_empty() => Some(format!("pc:{hash}")),
+        "book" | "tick_size_change" if !hash.is_empty() => {
+            Some(format!("{event_type}:{hash}:{timestamp}"))
+        }
+        "price_change" if !hash.is_empty() => Some(format!("pc:{hash}:{timestamp}")),
         "price_change" if !market.is_empty() => Some(format!("pc:{market}:{timestamp}")),
         "last_trade_price" if !asset_id.is_empty() && !price.is_empty() => {
-            Some(format!("ltp:{asset_id}:{price}:{size}"))
+            Some(format!("ltp:{asset_id}:{price}:{size}:{timestamp}"))
         }
         _ => None,
     }
@@ -442,6 +448,45 @@ mod tests {
     }
 
     #[test]
+    fn distinct_events_with_identical_state_are_kept_across_recurrence() {
+        // Book state recurrence A->B->A within the TTL: the second A is a
+        // genuine new event (different venue timestamp) and must survive.
+        let mut d = Deduplicator::new(64, 120_000);
+        let first = r#"{"event_type":"book","hash":"hA","timestamp":"2026-09-10T00:00:01Z"}"#;
+        let middle = r#"{"event_type":"book","hash":"hB","timestamp":"2026-09-10T00:00:02Z"}"#;
+        let recurrence = r#"{"event_type":"book","hash":"hA","timestamp":"2026-09-10T00:00:03Z"}"#;
+        assert!(d.process_at(first, 0));
+        assert!(d.process_at(middle, 1));
+        assert!(
+            d.process_at(recurrence, 2),
+            "state recurrence must not be collapsed"
+        );
+    }
+
+    #[test]
+    fn replays_of_identical_frames_stay_suppressed() {
+        let mut d = Deduplicator::new(64, 120_000);
+        let replayed = r#"{"event_type":"book","hash":"hA","timestamp":"2026-09-10T00:00:01Z"}"#;
+        assert!(d.process_at(replayed, 0));
+        assert!(
+            !d.process_at(replayed, 1),
+            "venue replay must stay suppressed"
+        );
+    }
+
+    #[test]
+    fn distinct_trades_with_same_price_and_size_are_both_kept() {
+        let mut d = Deduplicator::new(64, 120_000);
+        let first = r#"{"event_type":"last_trade_price","asset_id":"a","price":"0.5","size":"2","timestamp":"2026-09-10T00:00:01Z"}"#;
+        let second = r#"{"event_type":"last_trade_price","asset_id":"a","price":"0.5","size":"2","timestamp":"2026-09-10T00:00:02Z"}"#;
+        assert!(d.process_at(first, 0));
+        assert!(
+            d.process_at(second, 1),
+            "two real trades at the same price and size must not collapse"
+        );
+    }
+
+    #[test]
     fn raw_message_preserves_payload() {
         let payload: Value = serde_json::from_str(
             r#"{"event_type":"last_trade_price","asset_id":"a","price":"0.5","size":"2"}"#,
@@ -452,7 +497,8 @@ mod tests {
         assert_eq!(raw.payload, payload);
         assert_eq!(
             extract_key(&raw.payload.to_string()).unwrap(),
-            "ltp:a:0.5:2"
+            "ltp:a:0.5:2:",
+            "absent venue timestamp stays part of the key shape"
         );
     }
 
