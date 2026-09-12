@@ -194,7 +194,19 @@ fn crypto_market_from_row(
     row: Market,
     targets: &std::collections::BTreeMap<String, (String, DateTime<Utc>)>,
 ) -> Option<CryptoMarket> {
-    let (asset, fallback_start) = targets.get(row.slug.trim())?;
+    let (asset, requested_start) = targets.get(row.slug.trim())?;
+    // The slug selects a candidate; venue timestamps establish its duration.
+    // startDate is the listing date, not the contract opening time.
+    let window_start = row
+        .extra
+        .get("eventStartTime")?
+        .as_str()?
+        .parse::<DateTime<Utc>>()
+        .ok()?;
+    let window_end = row.end_date.0?.with_timezone(&Utc);
+    if window_start != *requested_start || window_end - window_start != Duration::seconds(300) {
+        return None;
+    }
     let condition_id = row.condition_id.trim();
     if condition_id.is_empty() {
         return None;
@@ -208,8 +220,6 @@ fn crypto_market_from_row(
     if up_token_id.is_empty() || down_token_id.is_empty() {
         return None;
     }
-    let (window_start, window_end) = window_from_slug(&row.slug, "5m")
-        .unwrap_or((*fallback_start, *fallback_start + Duration::minutes(5)));
     Some(CryptoMarket {
         id: row.id,
         condition_id: condition_id.into(),
@@ -477,7 +487,10 @@ mod tests {
     };
 
     fn market_json(slug: &str) -> serde_json::Value {
+        let (start, end) = window_from_slug(slug, "5m").unwrap();
         serde_json::json!({
+            "eventStartTime": start.to_rfc3339(),
+            "endDate": end.to_rfc3339(),
             "id": format!("gamma-{slug}"),
             "conditionId": format!("condition-{slug}"),
             "slug": slug,
@@ -487,6 +500,51 @@ mod tests {
             "outcomes": ["Up", "Down"],
             "clobTokenIds": format!("[\"{slug}-up\",\"{slug}-down\"]")
         })
+    }
+
+    #[test]
+    fn discovery_requires_authoritative_five_minute_duration() {
+        let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
+        let slug = crypto_window_slug("BTC", "5m", start);
+        let targets = std::collections::BTreeMap::from([(slug.clone(), ("BTC".into(), start))]);
+        for (duration, valid) in [(300, true), (600, false), (-300, false), (0, false)] {
+            let mut value = market_json(&slug);
+            value["eventStartTime"] = serde_json::json!(start.to_rfc3339());
+            value["endDate"] =
+                serde_json::json!((start + Duration::seconds(duration)).to_rfc3339());
+            let row: Market = serde_json::from_value(value).unwrap();
+            assert_eq!(
+                crypto_market_from_row(row, &targets).is_some(),
+                valid,
+                "duration={duration}"
+            );
+        }
+        for missing in ["eventStartTime", "endDate"] {
+            let mut value = market_json(&slug);
+            value.as_object_mut().unwrap().remove(missing);
+            assert!(
+                crypto_market_from_row(serde_json::from_value(value).unwrap(), &targets).is_none()
+            );
+        }
+        let mut value = market_json(&slug);
+        value["eventStartTime"] = serde_json::json!("malformed");
+        assert!(crypto_market_from_row(serde_json::from_value(value).unwrap(), &targets).is_none());
+    }
+
+    #[tokio::test]
+    async fn mixed_discovery_filters_duration_before_returning_tokens() {
+        let start = Utc.timestamp_opt(1_700_000_100, 0).unwrap();
+        let next = start + Duration::seconds(300);
+        let good = market_json(&crypto_window_slug("BTC", "5m", start));
+        let mut bad = market_json(&crypto_window_slug("BTC", "5m", next));
+        bad["endDate"] = serde_json::json!((next + Duration::seconds(600)).to_rfc3339());
+        let (client, server) = mock_client(vec![(200, serde_json::json!([good, bad]).to_string())]);
+        let rows = discover_window_markets(&client, &["BTC".into()], start, next)
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].start_time, Some(start));
+        assert_eq!(server.join().unwrap().len(), 1);
     }
 
     fn mock_client(
@@ -717,7 +775,7 @@ mod tests {
             let read = stream.read(&mut request).unwrap();
             let request = String::from_utf8_lossy(&request[..read]);
             assert!(request.contains("slug=btc-updown-5m-1700000100"));
-            let body = r#"[{"id":"gamma-1","conditionId":"condition-1","slug":"btc-updown-5m-1700000100","question":"Bitcoin Up or Down","active":true,"closed":false,"outcomes":["Up","Down"],"clobTokenIds":"[\"up\",\"down\"]"}]"#;
+            let body = r#"[{"eventStartTime":"2023-11-14T22:15:00Z","endDate":"2023-11-14T22:20:00Z","id":"gamma-1","conditionId":"condition-1","slug":"btc-updown-5m-1700000100","question":"Bitcoin Up or Down","active":true,"closed":false,"outcomes":["Up","Down"],"clobTokenIds":"[\"up\",\"down\"]"}]"#;
             write!(
                 stream,
                 "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
