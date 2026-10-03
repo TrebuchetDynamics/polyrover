@@ -960,55 +960,110 @@ mod tests {
         );
     }
 
-    #[tokio::test(start_paused = true)]
+    #[tokio::test]
     async fn silent_connection_past_pong_timeout_triggers_reconnect() {
-        use futures_util::{SinkExt, StreamExt};
-
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
-        let server = tokio::spawn(async move {
+        let (subscribed_tx, subscribed_rx) = tokio::sync::oneshot::channel();
+        let (delivered_tx, delivered_rx) = tokio::sync::oneshot::channel();
+        let mut server = tokio::spawn(async move {
             let (stream, _) = listener.accept().await.unwrap();
             let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
-            assert!(socket
-                .next()
-                .await
-                .unwrap()
-                .unwrap()
-                .to_string()
-                .contains("token-1"));
+            let subscription = socket.next().await.unwrap().unwrap();
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&subscription.to_string()).unwrap(),
+                market_subscription(&["token-1".into()], &Config::default()).unwrap()
+            );
+            subscribed_tx.send(()).unwrap();
 
+            // Do not read/respond on the first socket: only its pong timeout
+            // may trigger reconnect, not a fixture-generated close or pong.
             let (stream, _) = listener.accept().await.unwrap();
             let mut replacement = tokio_tungstenite::accept_async(stream).await.unwrap();
-            assert!(replacement
-                .next()
-                .await
-                .unwrap()
-                .unwrap()
-                .to_string()
-                .contains("token-1"));
+            let subscription = replacement.next().await.unwrap().unwrap();
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&subscription.to_string()).unwrap(),
+                market_subscription(&["token-1".into()], &Config::default()).unwrap()
+            );
             replacement
                 .send(Message::Text(
                     r#"{"event_type":"new_market","id":"market-2"}"#.into(),
                 ))
                 .await
                 .unwrap();
-            drop(socket);
-        });
-        let mut client = MarketWsClient::connect(Config {
-            url: format!("ws://{address}"),
-            pong_timeout_secs: 1,
-            ping_interval_secs: 3600,
-            ..Default::default()
-        })
-        .await
-        .unwrap();
-        client.subscribe_assets(&["token-1".into()]).await.unwrap();
 
-        let read = client.read_raw_with_status(1).await.unwrap();
+            // A send is not a receipt. Retain both sockets and the listener
+            // until the client acknowledges delivery and explicitly closes.
+            delivered_rx.await.unwrap();
+            assert!(matches!(
+                replacement.next().await.unwrap().unwrap(),
+                Message::Close(_)
+            ));
+            drop(replacement);
+            drop(socket);
+            drop(listener);
+        });
+
+        // Paused Tokio time can outrun real loopback frame delivery, expiring
+        // the replacement's timeout before its queued event is read. Use real
+        // time for this socket integration test, with bounded setup/read.
+        let outcome = tokio::time::timeout(Duration::from_secs(10), async {
+            let mut client = MarketWsClient::connect(Config {
+                url: format!("ws://{address}"),
+                pong_timeout_secs: 1,
+                ping_interval_secs: 3600,
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+            client.subscribe_assets(&["token-1".into()]).await.unwrap();
+            subscribed_rx.await.unwrap();
+            let read = client.read_raw_with_status(1).await;
+            (client, read)
+        })
+        .await;
+        let (client, read) = match outcome {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                server.abort();
+                tokio::time::timeout(Duration::from_secs(10), &mut server)
+                    .await
+                    .expect("timed-out fixture did not tear down")
+                    .unwrap_err();
+                panic!("silent-socket setup/read timed out: {error}");
+            }
+        };
+        let reconnects = client.stats().reconnects;
+        let expected_event = json!({"event_type":"new_market","id":"market-2"});
+        if read.as_ref().is_ok_and(|read| {
+            read.messages.len() == 1 && read.messages[0].payload == expected_event
+        }) {
+            delivered_tx.send(()).unwrap();
+        } else {
+            drop(delivered_tx);
+        }
+        let teardown = tokio::time::timeout(Duration::from_secs(10), async {
+            let closed = client.close().await;
+            let stopped = (&mut server).await;
+            (closed, stopped)
+        })
+        .await;
+        if teardown.is_err() {
+            server.abort();
+            (&mut server).await.unwrap_err();
+        }
+        let (closed, stopped) = teardown.expect("silent-socket teardown timed out");
+        closed.unwrap();
+        stopped.unwrap();
+
+        let read = read.unwrap();
         assert!(read.reconnected);
+        assert!(read.received_valid_frame);
+        assert!(!read.invalid_frame);
+        assert_eq!(read.messages.len(), 1);
         assert_eq!(read.messages[0].event_type, "new_market");
-        assert_eq!(client.stats().reconnects, 1);
-        server.await.unwrap();
+        assert_eq!(read.messages[0].payload, expected_event);
+        assert_eq!(reconnects, 1);
     }
 
     #[tokio::test]
