@@ -346,7 +346,7 @@ Current limitations:
 - A book snapshot cannot predict latency, queue position, or market movement.
 - Streaming liquidity/depth and local simulation use Decimal internally;
   upstream wire values remain strings.
-- CI uses deterministic provenance-linked fixtures; public API canaries are
+- Tests use deterministic provenance-linked fixtures; public API canaries are
   ignored and operator-run only.
 - `stream watch` buffers a bounded JSON result rather than emitting JSON Lines.
 - Research or backtest output is not evidence of profitability or live readiness.
