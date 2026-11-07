@@ -190,6 +190,28 @@ impl RfqResponse {
     pub fn is_success(&self) -> bool {
         self.status.is_success() && self.error.is_none()
     }
+    fn validate_binding(&self, expected: &CreateRequest) -> Result<()> {
+        if !identifier(&self.rfq_id) {
+            return Err(Error::Invalid("invalid RFQ ID"));
+        }
+        if let Some(r) = &self.request {
+            if r.rfq_id != self.rfq_id
+                || !same(&r.maker_address, &expected.maker_address)
+                || r.leg_position_ids != expected.leg_position_ids
+                || r.direction != expected.direction
+                || r.side != expected.side
+                || r.requested_size != expected.requested_size
+                || !uint(&r.yes_position_id)
+                || !uint(&r.no_position_id)
+                || r.yes_position_id == r.no_position_id
+            {
+                return Err(Error::Invalid(
+                    "RFQ response does not match the requested account or positions",
+                ));
+            }
+        }
+        Ok(())
+    }
     pub fn executable_for(
         &self,
         expected: &CreateRequest,
@@ -208,21 +230,7 @@ impl RfqResponse {
             .quote
             .as_ref()
             .ok_or(Error::Invalid("RFQ quote missing"))?;
-        if !identifier(&self.rfq_id)
-            || r.rfq_id != self.rfq_id
-            || !same(&r.maker_address, &expected.maker_address)
-            || r.leg_position_ids != expected.leg_position_ids
-            || r.direction != expected.direction
-            || r.side != expected.side
-            || r.requested_size != expected.requested_size
-            || !uint(&r.yes_position_id)
-            || !uint(&r.no_position_id)
-            || r.yes_position_id == r.no_position_id
-        {
-            return Err(Error::Invalid(
-                "RFQ response does not match the requested account or positions",
-            ));
-        }
+        self.validate_binding(expected)?;
         let expiry = self
             .expires_at
             .ok_or(Error::Invalid("RFQ expiry missing"))?;
@@ -283,6 +291,67 @@ pub struct CreatedRfq {
     credential_address: String,
 }
 impl CreatedRfq {
+    /// Rebuild a handle from trusted server storage, never arbitrary client input.
+    /// Expired and terminal records remain recoverable through status; this does
+    /// not grant executability or establish wallet ownership/authorization.
+    pub fn restore(
+        request: CreateRequest,
+        response: RfqResponse,
+        credential_address: String,
+        credentials: &L2Credentials,
+    ) -> Result<Self> {
+        request.validate(credentials)?;
+        if !address(&credential_address) || !same(&credential_address, &credentials.address) {
+            return Err(Error::Invalid(
+                "RFQ snapshot belongs to a different authenticated account",
+            ));
+        }
+        response.validate_binding(&request)?;
+        Ok(Self {
+            request,
+            response,
+            credential_address,
+        })
+    }
+
+    /// Pure preflight for a durable gateway before reserving an order hash.
+    /// `accept` independently repeats these checks with its actual current time.
+    pub fn validate_order(
+        &self,
+        c: &L2Credentials,
+        order: &SignedOrder,
+        now_ms: i64,
+    ) -> Result<()> {
+        check_handle(c, self)?;
+        self.response.executable_for(&self.request, c, now_ms)?;
+        let q = self
+            .response
+            .quote
+            .as_ref()
+            .ok_or(Error::Invalid("RFQ quote missing"))?;
+        let r = self
+            .response
+            .request
+            .as_ref()
+            .ok_or(Error::Invalid("RFQ request missing"))?;
+        if !same(&order.maker, &self.request.maker_address)
+            || !same(&order.signer, &self.request.signer_address)
+            || order.signature_type != self.request.signature_type
+            || order.token_id != r.yes_position_id
+            || order.maker_amount != q.maker_amount_e6
+            || order.taker_amount != q.taker_amount_e6
+            || order.side != u8::from(self.request.direction == Direction::Sell)
+            || !uint(&order.salt)
+            || !positive(&order.timestamp)
+            || !hex_bytes(&order.metadata, 32)
+            || order.builder != format!("0x{}", "0".repeat(64))
+            || !signature(&order.signature, order.signature_type)
+        {
+            return Err(Error::Invalid("signed order does not match the RFQ quote"));
+        }
+        Ok(())
+    }
+
     pub fn response(&self) -> &RfqResponse {
         &self.response
     }
@@ -354,34 +423,12 @@ impl Client {
         rfq: &CreatedRfq,
         order: &SignedOrder,
     ) -> Result<RfqResponse> {
-        check_handle(c, rfq)?;
-        rfq.response
-            .executable_for(&rfq.request, c, Utc::now().timestamp_millis())?;
+        rfq.validate_order(c, order, Utc::now().timestamp_millis())?;
         let q = rfq
             .response
             .quote
             .as_ref()
             .ok_or(Error::Invalid("RFQ quote missing"))?;
-        let r = rfq
-            .response
-            .request
-            .as_ref()
-            .ok_or(Error::Invalid("RFQ request missing"))?;
-        if !same(&order.maker, &rfq.request.maker_address)
-            || !same(&order.signer, &rfq.request.signer_address)
-            || order.signature_type != rfq.request.signature_type
-            || order.token_id != r.yes_position_id
-            || order.maker_amount != q.maker_amount_e6
-            || order.taker_amount != q.taker_amount_e6
-            || order.side != u8::from(rfq.request.direction == Direction::Sell)
-            || !uint(&order.salt)
-            || !positive(&order.timestamp)
-            || !hex_bytes(&order.metadata, 32)
-            || order.builder != format!("0x{}", "0".repeat(64))
-            || !signature(&order.signature, order.signature_type)
-        {
-            return Err(Error::Invalid("signed order does not match the RFQ quote"));
-        }
         #[derive(Serialize)]
         struct Acceptance<'a> {
             quote_id: &'a str,
