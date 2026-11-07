@@ -109,6 +109,10 @@ Authenticated history is library-only. Each method borrows `&L2Credentials`, sig
 | CLOB orders                 | Order/cancel records and responses | CLOB             | none      | L2 + wallet | `execution`   | dtoOnly | [`src/capabilities/clob_orders.rs`](../src/capabilities/clob_orders.rs) | [`src/capabilities/clob_orders.rs`](../src/capabilities/clob_orders.rs) |
 | Live order placement/cancel | Submit/cancel                      | CLOB             | HTTPS     | L2 + wallet | `execution`   | planned | —                                                                       | —                                                                       |
 
+| Combo requester | Create quote competition, accept caller-signed quote, read status | `/v1/requester/rfq/requests` | HTTPS | L2 + caller-supplied order signature | `execution` | implemented (local contract) | [`src/api/combo_requester.rs`](../src/api/combo_requester.rs) | [`tests/combo_requester.rs`](../tests/combo_requester.rs) |
+
+Requester details and remaining deployment/custody boundaries: [Combo requester](combo-requester.md). No authenticated-only or CLI execution is enabled.
+
 ## Bridge
 
 | Surface               | Method/event                      | Endpoint/channel | Transport | Auth level | Cargo feature | Status      | Rust API                                                      | Test                                                          |

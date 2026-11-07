@@ -1753,8 +1753,8 @@ const CAPABILITIES: &[Capability] = &[
         mutates: true,
         cli_command: None,
         extension: true,
-        summary: "Rfq submit.",
-        status: CapabilityStatus::Planned,
+        summary: "Requester Combo RFQ create, accept caller-signed order, and status.",
+        status: CapabilityStatus::Implemented,
     },
     Capability {
         id: "series.get",

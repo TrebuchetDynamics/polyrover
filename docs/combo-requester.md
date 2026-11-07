@@ -1,0 +1,24 @@
+# Combo requester client
+
+The `execution` feature exposes `combo_requester`, a server-side requester API client. The default public build, authenticated-only history client and CLI gain no execution route. This implements the local SDK protocol; it is not an Arenaton session-to-wallet gateway, wallet signer, custody system, builder integration or production/funded acceptance.
+
+## Explicit operations
+
+- `Client::create(credentials, request)` starts one quote competition. It is a mutation, not a market-data read. A transport failure is `OutcomeUnknown { operation: Create, rfq_id: None }`; the API provides no idempotency key or recovery lookup, so never automatically retry it.
+- `created.response()` retains HTTP200 business outcomes and future status/error codes. `executable_for` requires the exact requested account, legs, size and a live received millisecond expiry. The signed maker spend must satisfy `maker_amount_e6 <= total_required_e6 <= requested_size.value_e6`: BUY compares collateral (total includes fees), while SELL compares Combo shares. Only `AWAITING_REQUESTER_ACCEPTANCE` without an error qualifies; `FAILED` is not an executable quote. Expiry comes from the provider, not an assumed five/ten second constant.
+- `Client::accept(credentials, created, signed_order)` rechecks expiry and account, quote/request/position/amount/direction bindings, wallet signature type and zero builder attribution, then sends the caller-supplied signature exactly once. It does not build a signature, recover its signer or prove the caller's authority over a user wallet. Deposit signatures require the provider's ERC-7739 wrapping, which the caller supplies. Explicit repeated acceptance may be attempted before expiry; this client never retries automatically.
+- `Client::status(credentials, created)` performs one fresh L2-authenticated read, retaining the known RFQ ID on timeout or malformed/mismatched responses. The caller controls polling and persistence. Pending and future statuses are not failures; `response.is_success()` additionally requires the absence of a nested business error. An execution state or a local timeout is not a fill.
+
+`CreatedRfq` binds recovery/acceptance to the credential address used at creation. Its fields cannot be replaced by callers. Creating a new process-level recovery store, cross-user credential mapping or a custody strategy is outside this SDK slice. There is no inferred requester cancel endpoint: maker quote cancellation belongs to another API.
+
+## Identity and transport
+
+Proxy/Safe requests bind the credential address to signer; Deposit requests bind maker and signer to the Deposit Wallet while its credential address can be an account/session signer. EOA requests are rejected. Position IDs are canonical unsigned decimal uint256 values; selecting compatible legs from the real Combo catalog remains the caller/provider's responsibility. They are not interchangeable with CLOB token IDs. Monetary values remain integer strings in six-decimal units, without floating-point conversion.
+
+The production constructor fixes `https://combos-rfq-gateway-requester-api.polymarket.com`. The separately named loopback testing constructor allows literal loopback HTTP only, with no credentials, path, query or fragment in the URL. Both disable proxy inheritance and redirects, set a total request/body deadline, cap successful response bodies at256KiB and omit upstream bodies from errors. Existing `build_l2_headers` signs the exact serialized body/full path with a fresh timestamp per request; this module rejects non-base64 credential secrets instead of using the helper's legacy raw-secret fallback. Secrets remain borrowed runtime values and are not persisted or printed. All tests use disposable local HTTP servers, never the provider.
+
+## Source and verification boundary
+
+Official unversioned [requester guide](https://docs.polymarket.com/trading/combos/requesters) and [builder guide](https://docs.polymarket.com/trading/combos/builders), consulted2026-11-07. Requester uses zero builder attribution; builder credentials/onboarding and their gateway are separate. The signed order is Exchange v3/Polygon137; this module validates relevant wire fields but does not create or certify typed-data signatures.
+
+Local negative/wire tests establish validation, exact path/body/HMAC, unknown-create handling without retry, response/redirect bounds and account/quote isolation. They do not prove Polymarket availability, leg compatibility, valid approvals, account funding, signing authority or execution acceptance. DEBT031 remains open for trusted session/account mapping, the app gateway and actual authorized acceptance.

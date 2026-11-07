@@ -34,6 +34,9 @@ pub mod clob_history;
 #[cfg(feature = "execution")]
 #[path = "capabilities/clob_orders.rs"]
 pub mod clob_orders;
+#[cfg(feature = "execution")]
+#[path = "api/combo_requester.rs"]
+pub mod combo_requester;
 #[path = "streaming/config.rs"]
 pub mod config;
 #[cfg(feature = "public")]

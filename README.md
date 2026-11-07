@@ -334,7 +334,7 @@ private-key signing, relayer, or bridge-transfer client.
 - **`public` (default)** — Gamma, CLOB, Data API, market WSS, and resolution.
 - **`authenticated`** — public features plus borrowed-credential L2 history reads, HMAC helpers, and user WSS; no authenticated CLI.
 - **`wallet`** — local address derivation and readiness helpers.
-- **`execution`** — order and cancellation data types only; no submission transport.
+- **`execution`** — CLOB order/cancellation data types plus the explicit server-side [Combo requester client](docs/combo-requester.md); no CLOB submission transport or execution CLI.
 - **`bridge`** — bridge data types and local validation only; no transfer transport.
 - **`full`** — compiles every surface above; it does not add runtime authority.
 

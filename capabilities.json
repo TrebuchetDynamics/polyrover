@@ -2920,12 +2920,18 @@
       "mutates": true,
       "cliCommand": null,
       "extension": true,
-      "summary": "Rfq submit.",
-      "status": "planned",
-      "api": [],
-      "tests": [],
+      "summary": "Requester Combo RFQ create, accept caller-signed order, and status.",
+      "status": "implemented",
+      "api": [
+        "combo_requester::Client::create",
+        "combo_requester::Client::accept",
+        "combo_requester::Client::status"
+      ],
+      "tests": [
+        "tests/combo_requester.rs"
+      ],
       "guard": null,
-      "notes": "No callable Polyrover operation is implemented."
+      "notes": "Explicit execution feature, library only, fixed requester host and bounded no-retry transport. Caller supplies credentials and signed order on trusted infrastructure; no signer, custody, builder gateway, deployment or funded acceptance is implemented."
     },
     {
       "id": "series.get",
