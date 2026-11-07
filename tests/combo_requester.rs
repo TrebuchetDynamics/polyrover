@@ -493,3 +493,235 @@ async fn buy_overspend_acceptance_is_rejected_before_http() {
 async fn sell_overspend_acceptance_is_rejected_before_http() {
     assert_budget_rejected_without_http(Direction::Sell).await;
 }
+
+#[test]
+fn trusted_snapshot_roundtrip_restores_without_secrets() {
+    let credentials = credentials();
+    let original_request = request();
+    let original_response: RfqResponse = serde_json::from_value(response()).unwrap();
+    let stored =
+        serde_json::to_vec(&(&original_request, &original_response, &credentials.address)).unwrap();
+    let (request, response, address): (CreateRequest, RfqResponse, String) =
+        serde_json::from_slice(&stored).unwrap();
+    let restored = CreatedRfq::restore(request, response, address, &credentials).unwrap();
+    assert_eq!(restored.response(), &original_response);
+    restored
+        .validate_order(
+            &credentials,
+            &order(),
+            chrono::Utc::now().timestamp_millis(),
+        )
+        .unwrap();
+    for secret in [
+        &credentials.api_key.key,
+        &credentials.api_key.secret,
+        &credentials.api_key.passphrase,
+    ] {
+        assert!(!String::from_utf8_lossy(&stored).contains(secret));
+        assert!(!format!("{restored:?}").contains(secret));
+    }
+}
+
+#[test]
+fn restore_rejects_unbound_recorded_identity_and_unsafe_or_mixed_response() {
+    let credentials = credentials();
+    let parsed: RfqResponse = serde_json::from_value(response()).unwrap();
+    assert!(CreatedRfq::restore(
+        request(),
+        parsed.clone(),
+        request().maker_address,
+        &credentials
+    )
+    .is_err());
+    let mut other = credentials.clone();
+    other.address = request().maker_address;
+    assert!(CreatedRfq::restore(request(), parsed, credentials.address.clone(), &other).is_err());
+    // Deposit requests do not bind the credential address to the wallet signer;
+    // restoration must still bind the separately recorded credential identity.
+    let mut deposit_request = request();
+    deposit_request.signature_type = 3;
+    deposit_request.signer_address = deposit_request.maker_address.clone();
+    let deposit_response = serde_json::from_value(response()).unwrap();
+    assert!(CreatedRfq::restore(
+        deposit_request,
+        deposit_response,
+        credentials.address.clone(),
+        &other
+    )
+    .is_err());
+    let mut cases = Vec::new();
+    let mut raw = response();
+    raw["rfq_id"] = json!("../other?leak=1");
+    cases.push(raw);
+    for (field, value) in [
+        ("rfq_id", json!("other-rfq")),
+        ("maker_address", json!(credentials.address)),
+        ("leg_position_ids", json!(["123", "999"])),
+        ("direction", json!("SELL")),
+        (
+            "requested_size",
+            json!({"unit":"notional","value_e6":"2000000"}),
+        ),
+        ("yes_position_id", json!("0789")),
+        ("no_position_id", json!("789")),
+    ] {
+        let mut raw = response();
+        raw["request"][field] = value;
+        cases.push(raw);
+    }
+    for raw in cases {
+        let parsed = serde_json::from_value(raw).unwrap();
+        assert!(
+            CreatedRfq::restore(request(), parsed, credentials.address.clone(), &credentials)
+                .is_err()
+        );
+    }
+}
+
+#[tokio::test]
+async fn expired_restore_supports_status_but_accept_rechecks_real_time_before_http() {
+    let credentials = credentials();
+    let mut raw = response();
+    raw["expires_at"] = json!(1000);
+    raw["request"]["created_at"] = json!(0);
+    let restored = CreatedRfq::restore(
+        request(),
+        serde_json::from_value(raw).unwrap(),
+        credentials.address.clone(),
+        &credentials,
+    )
+    .unwrap();
+    // A successful historical preflight is not an authorization token for accept.
+    restored.validate_order(&credentials, &order(), 1).unwrap();
+    let (url, rx, thread, observer) = serve_with_listener(
+        vec![(200, json!({"rfq_id":"rfq-1","status":"FILLED"}))],
+        Duration::ZERO,
+    );
+    let client = Client::with_loopback_for_testing(&url, Duration::from_millis(100)).unwrap();
+    assert!(client
+        .status(&credentials, &restored)
+        .await
+        .unwrap()
+        .is_success());
+    let request = rx.recv().unwrap();
+    assert!(request.starts_with("GET /v1/requester/rfq/requests/rfq-1 HTTP/1.1"));
+    thread.join().unwrap();
+    observer.set_nonblocking(true).unwrap();
+    assert!(matches!(
+        client.accept(&credentials, &restored, &order()).await,
+        Err(Error::Invalid(_))
+    ));
+    assert_eq!(
+        observer.accept().unwrap_err().kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+}
+
+#[test]
+fn terminal_restore_remains_non_executable_and_preflight_rejects_bad_order_and_budget() {
+    let credentials = credentials();
+    let terminal: RfqResponse = serde_json::from_value(
+        json!({"rfq_id":"rfq-1","status":"FAILED","error":{"code":"NO_QUOTES"}}),
+    )
+    .unwrap();
+    let restored = CreatedRfq::restore(
+        request(),
+        terminal,
+        credentials.address.clone(),
+        &credentials,
+    )
+    .unwrap();
+    assert!(restored.response().status.is_terminal());
+    assert!(restored.validate_order(&credentials, &order(), 0).is_err());
+    let restored = CreatedRfq::restore(
+        request(),
+        serde_json::from_value(response()).unwrap(),
+        credentials.address.clone(),
+        &credentials,
+    )
+    .unwrap();
+    let mut bad_order = order();
+    bad_order.token_id = "999".into();
+    assert!(restored
+        .validate_order(
+            &credentials,
+            &bad_order,
+            chrono::Utc::now().timestamp_millis()
+        )
+        .is_err());
+    let mut raw = response();
+    raw["quote"]["maker_amount_e6"] = json!("2000000");
+    let restored = CreatedRfq::restore(
+        request(),
+        serde_json::from_value(raw).unwrap(),
+        credentials.address.clone(),
+        &credentials,
+    )
+    .unwrap();
+    let mut bad_order = order();
+    bad_order.maker_amount = "2000000".into();
+    assert!(restored
+        .validate_order(
+            &credentials,
+            &bad_order,
+            chrono::Utc::now().timestamp_millis()
+        )
+        .is_err());
+    let mut raw = response();
+    raw["quote"]["quote_id"] = json!("../different-quote");
+    let restored = CreatedRfq::restore(
+        request(),
+        serde_json::from_value(raw).unwrap(),
+        credentials.address.clone(),
+        &credentials,
+    )
+    .unwrap();
+    assert!(restored
+        .validate_order(
+            &credentials,
+            &order(),
+            chrono::Utc::now().timestamp_millis()
+        )
+        .is_err());
+}
+
+#[tokio::test]
+async fn actual_create_snapshot_roundtrip_recovers_status_with_a_new_client() {
+    let credentials = credentials();
+    let original_request = request();
+    let (url, rx, thread) = serve(
+        vec![
+            (200, response()),
+            (200, json!({"rfq_id":"rfq-1","status":"EXECUTING"})),
+        ],
+        Duration::ZERO,
+    );
+    let first_client = Client::with_loopback_for_testing(&url, Duration::from_secs(1)).unwrap();
+    let created = first_client
+        .create(&credentials, &original_request)
+        .await
+        .unwrap();
+    let stored =
+        serde_json::to_vec(&(&original_request, created.response(), &credentials.address)).unwrap();
+    drop(created);
+    drop(first_client);
+    let (request, response, address): (CreateRequest, RfqResponse, String) =
+        serde_json::from_slice(&stored).unwrap();
+    let restored = CreatedRfq::restore(request, response, address, &credentials).unwrap();
+    let second_client = Client::with_loopback_for_testing(&url, Duration::from_secs(1)).unwrap();
+    assert!(second_client
+        .status(&credentials, &restored)
+        .await
+        .unwrap()
+        .status
+        .is_pending());
+    assert!(rx
+        .recv()
+        .unwrap()
+        .starts_with("POST /v1/requester/rfq/requests HTTP/1.1"));
+    assert!(rx
+        .recv()
+        .unwrap()
+        .starts_with("GET /v1/requester/rfq/requests/rfq-1 HTTP/1.1"));
+    thread.join().unwrap();
+}
