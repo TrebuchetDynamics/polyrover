@@ -20,3 +20,7 @@ Validation: regression tests first, local loopback HTTP only; cover exact body/H
 - Raw logs and SHA256 receipt: ignored `target/requester-qualification/`; root must preserve these before retiring the worktree. No dependency/lock change.
 
 Stop condition reached: callable SDK requester contract and local guards are implemented and verified. Full DEBT031 cannot close from this evidence: trusted user/session-to-wallet mapping, gateway wiring, signing authority, deployment and authorized funded acceptance remain separate.
+
+## Review correction: maker spend bound
+
+The independent review found that checking only total_required against the requested budget still permitted a larger signed makerAmount. Four runtime regressions reproduced the gap: BUY collateral and SELL shares, both direct quote validation and actual unintended acceptance connections. The guard now requires maker_amount <= total_required <= requested_size, in the relevant spend units. The same tests pass with no acceptance connection; no speculative fee/net-receive formula was added. Raw RED/GREEN/full/clippy follow-up evidence is preserved separately.

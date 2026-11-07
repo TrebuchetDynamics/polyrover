@@ -69,8 +69,23 @@ fn serve(
     replies: Vec<(u16, Value)>,
     delay: Duration,
 ) -> (String, mpsc::Receiver<String>, thread::JoinHandle<()>) {
+    let (url, receiver, thread, listener) = serve_with_listener(replies, delay);
+    drop(listener);
+    (url, receiver, thread)
+}
+
+fn serve_with_listener(
+    replies: Vec<(u16, Value)>,
+    delay: Duration,
+) -> (
+    String,
+    mpsc::Receiver<String>,
+    thread::JoinHandle<()>,
+    TcpListener,
+) {
     let l = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = l.local_addr().unwrap();
+    let observer = l.try_clone().unwrap();
     let (tx, rx) = mpsc::channel();
     let h = thread::spawn(move || {
         for (status, body) in replies {
@@ -105,7 +120,7 @@ fn serve(
             let _=write!(s,"HTTP/1.1 {status} Reply\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len());
         }
     });
-    (format!("http://{addr}"), rx, h)
+    (format!("http://{addr}"), rx, h, observer)
 }
 
 #[test]
@@ -396,4 +411,85 @@ async fn credentials_are_never_forwarded_to_a_redirect_destination() {
         target.accept().unwrap_err().kind(),
         std::io::ErrorKind::WouldBlock
     );
+}
+
+fn spend_case(direction: Direction) -> (CreateRequest, Value, SignedOrder) {
+    let mut request = request();
+    let mut response = response();
+    let mut order = order();
+    if direction == Direction::Sell {
+        request.direction = Direction::Sell;
+        request.requested_size.unit = SizeUnit::Shares;
+        response["request"]["direction"] = json!("SELL");
+        response["request"]["requested_size"]["unit"] = json!("shares");
+        response["quote"]["maker_amount_e6"] = json!("1000000");
+        response["quote"]["taker_amount_e6"] = json!("500000");
+        response["quote"]["net_receive_e6"] = json!("480000");
+        order.side = 1;
+        order.maker_amount = "1000000".into();
+        order.taker_amount = "500000".into();
+    }
+    (request, response, order)
+}
+
+fn assert_maker_spend_bound(direction: Direction) {
+    let (request, mut raw, _) = spend_case(direction);
+    let credentials = credentials();
+    let valid: RfqResponse = serde_json::from_value(raw.clone()).unwrap();
+    valid
+        .executable_for(
+            &request,
+            &credentials,
+            chrono::Utc::now().timestamp_millis(),
+        )
+        .unwrap();
+    raw["quote"]["maker_amount_e6"] = json!("2000000");
+    let invalid: RfqResponse = serde_json::from_value(raw).unwrap();
+    assert!(
+        invalid
+            .executable_for(
+                &request,
+                &credentials,
+                chrono::Utc::now().timestamp_millis()
+            )
+            .is_err(),
+        "maker spend exceeds the total required and the requested budget"
+    );
+}
+
+#[test]
+fn buy_maker_spend_cannot_exceed_collateral_budget() {
+    assert_maker_spend_bound(Direction::Buy);
+}
+#[test]
+fn sell_maker_spend_cannot_exceed_share_budget() {
+    assert_maker_spend_bound(Direction::Sell);
+}
+
+async fn assert_budget_rejected_without_http(direction: Direction) {
+    let (request, mut raw, mut order) = spend_case(direction);
+    raw["quote"]["maker_amount_e6"] = json!("2000000");
+    order.maker_amount = "2000000".into();
+    let (url, rx, thread, observer) = serve_with_listener(vec![(200, raw)], Duration::ZERO);
+    let client = Client::with_loopback_for_testing(&url, Duration::from_millis(100)).unwrap();
+    let credentials = credentials();
+    let created = client.create(&credentials, &request).await.unwrap();
+    rx.recv().unwrap();
+    thread.join().unwrap();
+    observer.set_nonblocking(true).unwrap();
+    let result = client.accept(&credentials, &created, &order).await;
+    assert_eq!(
+        observer.accept().unwrap_err().kind(),
+        std::io::ErrorKind::WouldBlock,
+        "invalid quote must not initiate another connection"
+    );
+    assert!(matches!(result, Err(Error::Invalid(_))));
+}
+#[tokio::test]
+async fn buy_overspend_acceptance_is_rejected_before_http() {
+    assert_budget_rejected_without_http(Direction::Buy).await;
+}
+#[tokio::test]
+async fn sell_overspend_acceptance_is_rejected_before_http() {
+    assert_budget_rejected_without_http(Direction::Sell).await;
 }

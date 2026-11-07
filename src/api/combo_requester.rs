@@ -240,6 +240,7 @@ impl RfqResponse {
             ]
             .iter()
             .any(|v| !positive(v))
+            || decimal_gt(&q.maker_amount_e6, &q.total_required_e6)
             || decimal_gt(&q.total_required_e6, &expected.requested_size.value_e6)
         {
             return Err(Error::Invalid(
